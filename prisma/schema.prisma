@@ -1,0 +1,347 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Organization/Business account
+model Organization {
+  id              String   @id @default(cuid())
+  name            String
+  email           String?
+  phone           String?
+  address         String?
+  city            String?
+  state           String?
+  zipCode         String?
+  timezone        String   @default("America/New_York")
+  businessHoursStart String @default("09:00")
+  businessHoursEnd   String @default("17:00")
+  appointmentBuffer  Int    @default(15) // minutes between appointments
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  users           User[]
+  clients         Client[]
+  services        Service[]
+  appointments    Appointment[]
+  messageTemplates MessageTemplate[]
+  messageLogs     MessageLog[]
+}
+
+// User account (linked to Clerk)
+model User {
+  id              String   @id @default(cuid())
+  clerkId         String   @unique
+  email           String   @unique
+  firstName       String?
+  lastName        String?
+  role            UserRole @default(OWNER)
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  STAFF
+}
+
+// Client (pet owner)
+model Client {
+  id              String   @id @default(cuid())
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String?
+  address         String?
+  city            String?
+  state           String?
+  zipCode         String?
+  notes           String?
+  tags            String[] // Simple array of tag strings
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  pets            Pet[]
+  appointments    Appointment[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([lastName, firstName])
+}
+
+// Pet
+model Pet {
+  id              String   @id @default(cuid())
+  name            String
+  species         String   @default("Dog")
+  breed           String?
+  color           String?
+  birthDate       DateTime?
+  weight          Float?   // in pounds
+  sex             String?  // Male, Female, Unknown
+
+  // Grooming-specific info
+  coatType        String?  // Short, Medium, Long, Double, Wire, Curly
+  coatNotes       String?
+  behaviorNotes   String?
+  groomingPrefs   String?  // Special requests or preferences
+  vaccineNotes    String?  // Vaccination info
+  medicalNotes    String?
+
+  photoUrl        String?
+
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  appointmentPets AppointmentPet[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+// Service catalog
+model Service {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  defaultPrice    Float
+  defaultDuration Int      // in minutes
+  isAddOn         Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  appointmentServices AppointmentService[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+// Appointment
+model Appointment {
+  id              String   @id @default(cuid())
+
+  dateTime        DateTime
+  duration        Int      // total duration in minutes
+
+  status          AppointmentStatus @default(SCHEDULED)
+
+  // Location info (for mobile groomers)
+  locationType    LocationType @default(CLIENT_HOME)
+  locationAddress String?
+  locationNotes   String?
+
+  notes           String?
+  internalNotes   String?
+
+  // Calculated totals
+  subtotal        Float    @default(0)
+  tipAmount       Float    @default(0)
+  totalAmount     Float    @default(0)
+
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Relations
+  appointmentPets AppointmentPet[]
+  appointmentServices AppointmentService[]
+  payment         Payment?
+  messageLogs     MessageLog[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId, dateTime])
+  @@index([clientId])
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  NO_SHOW
+  CANCELED
+}
+
+enum LocationType {
+  CLIENT_HOME
+  BUSINESS
+  OTHER
+}
+
+// Junction table for Appointment <-> Pet (many-to-many)
+model AppointmentPet {
+  id              String   @id @default(cuid())
+
+  appointmentId   String
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  petId           String
+  pet             Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  notes           String?
+
+  createdAt       DateTime @default(now())
+
+  @@unique([appointmentId, petId])
+  @@index([appointmentId])
+  @@index([petId])
+}
+
+// Junction table for Appointment <-> Service
+model AppointmentService {
+  id              String   @id @default(cuid())
+
+  appointmentId   String
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  serviceId       String
+  service         Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  // Override prices per appointment
+  price           Float
+  duration        Int      // in minutes
+
+  // Which pet is this service for (optional, for per-pet services)
+  petId           String?
+
+  notes           String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([appointmentId])
+  @@index([serviceId])
+}
+
+// Payment record
+model Payment {
+  id              String   @id @default(cuid())
+
+  appointmentId   String   @unique
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  amount          Float
+  tipAmount       Float    @default(0)
+  totalAmount     Float
+
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+
+  paidAt          DateTime?
+  receiptNote     String?
+
+  // For future Stripe integration
+  stripePaymentId String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+enum PaymentMethod {
+  CASH
+  CHECK
+  CARD
+  VENMO
+  ZELLE
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
+// Message templates
+model MessageTemplate {
+  id              String   @id @default(cuid())
+
+  name            String   // e.g., "Booking Confirmation", "24h Reminder"
+  type            MessageTemplateType
+  subject         String?  // For emails
+  body            String   // Template with placeholders like {{clientName}}, {{petName}}, etc.
+
+  isActive        Boolean  @default(true)
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+enum MessageTemplateType {
+  BOOKING_CONFIRMATION
+  REMINDER_24H
+  ON_MY_WAY
+  THANK_YOU
+  CUSTOM
+}
+
+// Log of sent messages
+model MessageLog {
+  id              String   @id @default(cuid())
+
+  type            MessageType
+  recipient       String   // Email or phone
+  subject         String?
+  body            String
+
+  status          MessageStatus @default(SENT)
+  sentAt          DateTime @default(now())
+
+  // Optional links
+  appointmentId   String?
+  appointment     Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Provider info
+  providerId      String?  // Resend message ID or Twilio SID
+
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([appointmentId])
+}
+
+enum MessageType {
+  EMAIL
+  SMS
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
