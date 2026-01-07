@@ -104,15 +104,16 @@ A simple, elegant CRM for mobile and independent dog groomers. Built with Next.j
 
 ### Database Setup Options
 
-**Option 1: Supabase (Recommended)**
+**Option 1: Neon (Recommended)**
+1. Create a free account at [neon.tech](https://neon.tech)
+2. Create a new project (choose your nearest region)
+3. Copy the connection string from the dashboard
+4. Use as your `DATABASE_URL` (it should look like `postgresql://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require`)
+
+**Option 2: Supabase**
 1. Create a free project at [supabase.com](https://supabase.com)
 2. Go to Settings > Database and copy the connection string
 3. Use the connection string as your `DATABASE_URL`
-
-**Option 2: Neon**
-1. Create a free project at [neon.tech](https://neon.tech)
-2. Copy the connection string from the dashboard
-3. Use as your `DATABASE_URL`
 
 **Option 3: Local PostgreSQL**
 ```bash
