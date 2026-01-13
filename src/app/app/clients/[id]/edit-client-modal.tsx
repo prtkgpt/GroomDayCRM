@@ -53,7 +53,7 @@ export function EditClientModal({ client }: EditClientModalProps) {
   const [isPending, startTransition] = useTransition()
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const form = useForm<ClientFormData>({
+  const form = useForm({
     resolver: zodResolver(clientSchema),
     defaultValues: {
       firstName: client.firstName,

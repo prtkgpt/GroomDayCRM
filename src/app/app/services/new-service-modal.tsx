@@ -26,7 +26,7 @@ export function NewServiceModal() {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  const form = useForm<ServiceFormData>({
+  const form = useForm({
     resolver: zodResolver(serviceSchema),
     defaultValues: {
       name: "",

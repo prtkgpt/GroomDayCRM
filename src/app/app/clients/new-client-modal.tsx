@@ -25,7 +25,7 @@ export function NewClientModal() {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  const form = useForm<ClientFormData>({
+  const form = useForm({
     resolver: zodResolver(clientSchema),
     defaultValues: {
       firstName: "",

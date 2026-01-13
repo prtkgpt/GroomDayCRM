@@ -55,7 +55,7 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
-  const form = useForm<OrganizationFormData>({
+  const form = useForm({
     resolver: zodResolver(organizationSchema),
     defaultValues: {
       name: organization.name,
