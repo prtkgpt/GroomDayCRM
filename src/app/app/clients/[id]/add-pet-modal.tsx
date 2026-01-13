@@ -200,3 +200,4 @@ export function AddPetModal({ clientId }: AddPetModalProps) {
     </Dialog>
   )
 }
+
