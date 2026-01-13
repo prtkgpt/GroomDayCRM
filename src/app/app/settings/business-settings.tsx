@@ -76,8 +76,8 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
   })
 
   const bookingUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/book/${form.watch("slug")}`
-    : `/book/${form.watch("slug")}`
+    ? `${window.location.origin}/${form.watch("slug")}/book`
+    : `/${form.watch("slug")}/book`
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(bookingUrl)
@@ -110,16 +110,17 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="slug">Booking URL *</Label>
+            <Label htmlFor="slug">Your Business URL *</Label>
             <div className="flex gap-2 mt-1">
               <div className="flex-1 flex items-center bg-muted rounded-md px-3 text-sm">
-                <span className="text-muted-foreground">/book/</span>
+                <span className="text-muted-foreground">groomdaycrm.com/</span>
                 <Input
                   id="slug"
                   {...form.register("slug")}
                   className="border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                   placeholder="your-business"
                 />
+                <span className="text-muted-foreground">/book</span>
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
