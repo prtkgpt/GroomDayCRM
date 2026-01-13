@@ -198,6 +198,7 @@ export function NewBookingModal({
       try {
         const pet = await createPet({
           name: newPetData.name,
+          species: "Dog",
           breed: newPetData.breed || undefined,
           weight: newPetData.weight ? parseFloat(newPetData.weight) : undefined,
           clientId: selectedClient.id,
