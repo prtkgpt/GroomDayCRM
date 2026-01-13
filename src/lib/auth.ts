@@ -1,6 +1,31 @@
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { db } from "@/lib/db"
 
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .substring(0, 50)
+}
+
+async function getUniqueSlug(baseName: string): Promise<string> {
+  let slug = generateSlug(baseName)
+  let counter = 0
+
+  while (true) {
+    const testSlug = counter === 0 ? slug : `${slug}-${counter}`
+    const existing = await db.organization.findUnique({
+      where: { slug: testSlug },
+    })
+    if (!existing) {
+      return testSlug
+    }
+    counter++
+  }
+}
+
 export async function getUser() {
   const { userId } = await auth()
   if (!userId) return null
@@ -65,9 +90,13 @@ export async function ensureUserAndOrg() {
     if (!user) {
       console.log("ensureUserAndOrg: Creating new user and org for", clerkUser.emailAddresses[0]?.emailAddress)
 
+      const orgName = `${clerkUser.firstName || "My"}'s Grooming Business`
+      const slug = await getUniqueSlug(orgName)
+
       const org = await db.organization.create({
         data: {
-          name: `${clerkUser.firstName || "My"}'s Grooming Business`,
+          name: orgName,
+          slug,
           email: clerkUser.emailAddresses[0]?.emailAddress,
         },
       })

@@ -11,6 +11,7 @@ datasource db {
 model Organization {
   id              String   @id @default(cuid())
   name            String
+  slug            String   @unique // URL-friendly identifier for public booking
   email           String?
   phone           String?
   address         String?

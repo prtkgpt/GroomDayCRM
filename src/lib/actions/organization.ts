@@ -22,10 +22,23 @@ export async function updateOrganization(data: OrganizationFormData) {
   const organizationId = await requireOrganizationId()
   const validated = organizationSchema.parse(data)
 
+  // Check if slug is already taken by another organization
+  const existingSlug = await db.organization.findFirst({
+    where: {
+      slug: validated.slug,
+      id: { not: organizationId },
+    },
+  })
+
+  if (existingSlug) {
+    throw new Error("This booking URL is already taken. Please choose another.")
+  }
+
   const organization = await db.organization.update({
     where: { id: organizationId },
     data: {
       name: validated.name,
+      slug: validated.slug,
       email: validated.email || null,
       phone: validated.phone || null,
       address: validated.address || null,

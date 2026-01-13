@@ -1,10 +1,10 @@
 "use client"
 
-import { useTransition } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader2 } from "lucide-react"
+import { Loader2, ExternalLink, Copy, Check } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,6 +24,7 @@ interface BusinessSettingsProps {
   organization: {
     id: string
     name: string
+    slug: string
     email: string | null
     phone: string | null
     address: string | null
@@ -54,11 +55,13 @@ const timeOptions = Array.from({ length: 24 }, (_, i) => {
 export function BusinessSettings({ organization }: BusinessSettingsProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [copied, setCopied] = useState(false)
 
   const form = useForm({
     resolver: zodResolver(organizationSchema),
     defaultValues: {
       name: organization.name,
+      slug: organization.slug,
       email: organization.email || "",
       phone: organization.phone || "",
       address: organization.address || "",
@@ -72,6 +75,16 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
     },
   })
 
+  const bookingUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/book/${form.watch("slug")}`
+    : `/book/${form.watch("slug")}`
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(bookingUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   const onSubmit = (data: OrganizationFormData) => {
     startTransition(async () => {
       try {
@@ -79,13 +92,55 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
         toast({ title: "Settings saved" })
         router.refresh()
       } catch (error) {
-        toast({ title: "Failed to save settings", variant: "destructive" })
+        const message = error instanceof Error ? error.message : "Failed to save settings"
+        toast({ title: message, variant: "destructive" })
       }
     })
   }
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      {/* Online Booking */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader>
+          <CardTitle>Online Booking</CardTitle>
+          <CardDescription>
+            Allow customers to book appointments online
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="slug">Booking URL *</Label>
+            <div className="flex gap-2 mt-1">
+              <div className="flex-1 flex items-center bg-muted rounded-md px-3 text-sm">
+                <span className="text-muted-foreground">/book/</span>
+                <Input
+                  id="slug"
+                  {...form.register("slug")}
+                  className="border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  placeholder="your-business"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Only lowercase letters, numbers, and hyphens allowed
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 p-3 bg-background rounded-lg border">
+            <span className="text-sm flex-1 truncate">{bookingUrl}</span>
+            <Button type="button" variant="ghost" size="icon" onClick={copyToClipboard}>
+              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+            </Button>
+            <Button type="button" variant="ghost" size="icon" asChild>
+              <a href={bookingUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Business Info */}
       <Card>
         <CardHeader>

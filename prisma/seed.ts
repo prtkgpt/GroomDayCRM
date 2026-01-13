@@ -12,6 +12,7 @@ async function main() {
     create: {
       id: 'demo-org',
       name: "Pawfect Grooming",
+      slug: "pawfect-grooming",
       email: "hello@pawfectgrooming.com",
       phone: "(555) 123-4567",
       address: "123 Main Street",

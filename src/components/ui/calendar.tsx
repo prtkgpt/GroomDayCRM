@@ -21,10 +21,11 @@ import { Button } from "@/components/ui/button"
 export interface CalendarProps {
   selected?: Date
   onSelect?: (date: Date) => void
+  disabled?: (date: Date) => boolean
   className?: string
 }
 
-function Calendar({ selected, onSelect, className }: CalendarProps) {
+function Calendar({ selected, onSelect, disabled, className }: CalendarProps) {
   const [currentMonth, setCurrentMonth] = React.useState(selected || new Date())
 
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1))
@@ -89,17 +90,20 @@ function Calendar({ selected, onSelect, className }: CalendarProps) {
               const isCurrentMonth = isSameMonth(dayDate, currentMonth)
               const isSelected = selected && isSameDay(dayDate, selected)
               const isTodayDate = isToday(dayDate)
+              const isDisabled = disabled?.(dayDate) ?? false
 
               return (
                 <button
                   key={dayIndex}
-                  onClick={() => onSelect?.(dayDate)}
+                  onClick={() => !isDisabled && onSelect?.(dayDate)}
+                  disabled={isDisabled}
                   className={cn(
                     "h-9 w-9 text-center text-sm p-0 font-normal rounded-md hover:bg-accent hover:text-accent-foreground transition-colors",
                     !isCurrentMonth && "text-muted-foreground opacity-50",
                     isSelected &&
                       "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-                    isTodayDate && !isSelected && "bg-accent text-accent-foreground"
+                    isTodayDate && !isSelected && "bg-accent text-accent-foreground",
+                    isDisabled && "opacity-30 cursor-not-allowed hover:bg-transparent hover:text-inherit"
                   )}
                 >
                   {format(dayDate, "d")}
