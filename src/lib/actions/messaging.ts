@@ -96,8 +96,9 @@ export async function sendAppointmentEmail(
 
   if (resend) {
     try {
+      const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev"
       const result = await resend.emails.send({
-        from: `${appointment.organization.name} <onboarding@resend.dev>`,
+        from: `${appointment.organization.name} <${fromEmail}>`,
         to: appointment.client.email,
         subject: subject || `Message from ${appointment.organization.name}`,
         text: body,
