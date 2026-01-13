@@ -62,13 +62,13 @@ export function EditPetModal({ pet }: EditPetModalProps) {
   const [isPending, startTransition] = useTransition()
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const form = useForm<PetFormData>({
+  const form = useForm({
     resolver: zodResolver(petSchema),
     defaultValues: {
       name: pet.name,
       species: pet.species,
       breed: pet.breed || "",
-      weight: pet.weight?.toString() || "",
+      weight: (pet.weight?.toString() || "") as number | "",
       sex: pet.sex || "",
       coatType: pet.coatType || "",
       coatNotes: pet.coatNotes || "",

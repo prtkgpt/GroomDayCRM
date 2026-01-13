@@ -36,13 +36,13 @@ export function AddPetModal({ clientId }: AddPetModalProps) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  const form = useForm<PetFormData>({
+  const form = useForm({
     resolver: zodResolver(petSchema),
     defaultValues: {
       name: "",
       species: "Dog",
       breed: "",
-      weight: "",
+      weight: "" as number | "",
       sex: "",
       coatType: "",
       coatNotes: "",
