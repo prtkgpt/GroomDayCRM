@@ -17,11 +17,11 @@ export type ClientFormData = z.infer<typeof clientSchema>
 
 export const petSchema = z.object({
   name: z.string().min(1, "Pet name is required"),
-  species: z.string().default("Dog"),
+  species: z.string().min(1, "Species is required"),
   breed: z.string().optional(),
   color: z.string().optional(),
   birthDate: z.string().optional(),
-  weight: z.coerce.number().positive().optional().or(z.literal("")),
+  weight: z.union([z.coerce.number().positive(), z.literal("")]).optional(),
   sex: z.string().optional(),
   coatType: z.string().optional(),
   coatNotes: z.string().optional(),
