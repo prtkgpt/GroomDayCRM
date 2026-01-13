@@ -32,7 +32,7 @@ export const petSchema = z.object({
   clientId: z.string().min(1, "Client is required"),
 })
 
-export type PetFormData = z.infer<typeof petSchema>
+export type PetFormData = z.input<typeof petSchema>
 
 export const appointmentSchema = z.object({
   clientId: z.string().min(1, "Client is required"),
