@@ -17,8 +17,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { getPet } from "@/lib/actions/pets"
+import { getVaccinationsForPet } from "@/lib/actions/vaccinations"
 import { formatCurrency, formatTime, getStatusColor, getStatusLabel } from "@/lib/utils"
 import { EditPetModal } from "./edit-pet-modal"
+import { VaccinationTracker } from "./vaccination-tracker"
 
 export default async function PetDetailPage({
   params,
@@ -26,7 +28,10 @@ export default async function PetDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const pet = await getPet(id)
+  const [pet, vaccinations] = await Promise.all([
+    getPet(id),
+    getVaccinationsForPet(id).catch(() => []),
+  ])
 
   if (!pet) {
     notFound()
@@ -221,28 +226,24 @@ export default async function PetDetailPage({
             </Card>
           )}
 
-          {/* Medical & Vaccines */}
-          {(pet.vaccineNotes || pet.medicalNotes) && (
+          {/* Vaccination Tracker */}
+          <VaccinationTracker
+            petId={pet.id}
+            petName={pet.name}
+            vaccinations={vaccinations}
+          />
+
+          {/* Medical Notes */}
+          {pet.medicalNotes && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Syringe className="h-5 w-5" />
-                  Medical Info
+                  <Heart className="h-5 w-5" />
+                  Medical Notes
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {pet.vaccineNotes && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Vaccines</p>
-                    <p className="text-sm whitespace-pre-wrap">{pet.vaccineNotes}</p>
-                  </div>
-                )}
-                {pet.medicalNotes && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Medical Notes</p>
-                    <p className="text-sm whitespace-pre-wrap">{pet.medicalNotes}</p>
-                  </div>
-                )}
+              <CardContent>
+                <p className="text-sm whitespace-pre-wrap">{pet.medicalNotes}</p>
               </CardContent>
             </Card>
           )}

@@ -109,11 +109,36 @@ model Pet {
   client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   appointmentPets AppointmentPet[]
+  vaccinations    VaccinationRecord[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@index([clientId])
+}
+
+// Vaccination record for pets
+model VaccinationRecord {
+  id              String   @id @default(cuid())
+
+  name            String   // e.g., "Rabies", "DHPP", "Bordetella"
+  dateAdministered DateTime
+  expirationDate  DateTime?
+
+  // Document storage
+  documentUrl     String?  // URL to uploaded document
+  documentName    String?  // Original filename
+
+  notes           String?
+
+  petId           String
+  pet             Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([petId])
+  @@index([expirationDate])
 }
 
 // Service catalog
