@@ -42,30 +42,35 @@ export async function requireOrganizationId(): Promise<string> {
 }
 
 export async function ensureUserAndOrg() {
-  const { userId } = await auth()
-  if (!userId) {
-    throw new Error("Not authenticated")
-  }
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      console.error("ensureUserAndOrg: No userId")
+      throw new Error("Not authenticated")
+    }
 
-  const clerkUser = await currentUser()
-  if (!clerkUser) {
-    throw new Error("User not found")
-  }
+    const clerkUser = await currentUser()
+    if (!clerkUser) {
+      console.error("ensureUserAndOrg: No clerkUser")
+      throw new Error("User not found")
+    }
 
-  // Check if user exists in our database
-  let user = await db.user.findUnique({
-    where: { clerkId: userId },
-    include: { organization: true },
-  })
-
-  // If not, create user and organization
-  if (!user) {
-    const org = await db.organization.create({
-      data: {
-        name: `${clerkUser.firstName}'s Grooming Business`,
-        email: clerkUser.emailAddresses[0]?.emailAddress,
-      },
+    // Check if user exists in our database
+    let user = await db.user.findUnique({
+      where: { clerkId: userId },
+      include: { organization: true },
     })
+
+    // If not, create user and organization
+    if (!user) {
+      console.log("ensureUserAndOrg: Creating new user and org for", clerkUser.emailAddresses[0]?.emailAddress)
+
+      const org = await db.organization.create({
+        data: {
+          name: `${clerkUser.firstName || "My"}'s Grooming Business`,
+          email: clerkUser.emailAddresses[0]?.emailAddress,
+        },
+      })
 
     user = await db.user.create({
       data: {
@@ -214,5 +219,9 @@ Best,
     })
   }
 
-  return user
+    return user
+  } catch (error) {
+    console.error("ensureUserAndOrg error:", error)
+    throw error
+  }
 }

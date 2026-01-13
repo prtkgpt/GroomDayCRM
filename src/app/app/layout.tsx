@@ -7,15 +7,20 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode
 }) {
-  const user = await ensureUserAndOrg()
+  try {
+    const user = await ensureUserAndOrg()
 
-  if (!user) {
-    redirect("/login")
+    if (!user) {
+      redirect("/login")
+    }
+
+    return (
+      <AppShell orgName={user.organization.name}>
+        {children}
+      </AppShell>
+    )
+  } catch (error) {
+    console.error("Error in AppLayout:", error)
+    throw error
   }
-
-  return (
-    <AppShell orgName={user.organization.name}>
-      {children}
-    </AppShell>
-  )
 }
