@@ -1,7 +1,8 @@
 import Link from "next/link"
-import { Settings, Building, Clock, MessageSquare, Users, Plug, ExternalLink } from "lucide-react"
+import { Settings, Building, Clock, MessageSquare, Users, Plug, ExternalLink, Repeat, Package, BarChart3 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
 import { getOrganization, getMessageTemplates, getIntegrations } from "@/lib/actions/organization"
 import { BusinessSettings } from "./business-settings"
 import { MessageTemplates } from "./message-templates"
@@ -35,10 +36,22 @@ export default async function SettingsPage() {
       </div>
 
       <Tabs defaultValue="business" className="space-y-6">
-        <TabsList className="flex-wrap h-auto">
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="business">
             <Building className="h-4 w-4 mr-2" />
             Business
+          </TabsTrigger>
+          <TabsTrigger value="recurring">
+            <Repeat className="h-4 w-4 mr-2" />
+            Recurring
+          </TabsTrigger>
+          <TabsTrigger value="inventory">
+            <Package className="h-4 w-4 mr-2" />
+            Inventory
+          </TabsTrigger>
+          <TabsTrigger value="reports">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Reports
           </TabsTrigger>
           <TabsTrigger value="integrations">
             <Plug className="h-4 w-4 mr-2" />
@@ -56,6 +69,84 @@ export default async function SettingsPage() {
 
         <TabsContent value="business">
           <BusinessSettings organization={orgWithDefaults} />
+        </TabsContent>
+
+        <TabsContent value="recurring">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Repeat className="h-5 w-5" />
+                Recurring Schedules
+              </CardTitle>
+              <CardDescription>
+                Manage recurring appointments and automated scheduling
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Set up recurring appointments for regular clients. Automatically generate appointments based on schedules.
+              </p>
+              <Link href="/app/recurring">
+                <Button>
+                  <Repeat className="h-4 w-4 mr-2" />
+                  Manage Recurring Schedules
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="inventory">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Inventory Management
+              </CardTitle>
+              <CardDescription>
+                Track grooming supplies and stock levels
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Manage your inventory of shampoos, conditioners, and other grooming supplies. Get alerts when stock is low.
+              </p>
+              <Link href="/app/inventory">
+                <Button>
+                  <Package className="h-4 w-4 mr-2" />
+                  Manage Inventory
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="reports">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Reports & Analytics
+              </CardTitle>
+              <CardDescription>
+                Business insights and performance metrics
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                View revenue reports, appointment trends, popular services, and top clients to make data-driven decisions.
+              </p>
+              <Link href="/app/reports">
+                <Button>
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  View Reports
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="integrations">
@@ -82,21 +173,24 @@ export default async function SettingsPage() {
         <TabsContent value="team">
           <Card>
             <CardHeader>
-              <CardTitle>Team Management</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Team Management
+              </CardTitle>
               <CardDescription>
                 Manage your staff members, schedules, and time off
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Staff management has moved to its own dedicated section for easier access.
+                Add and manage groomers, set their working schedules, and track time off requests.
               </p>
               <Link href="/app/staff">
-                <button className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                <Button>
                   <Users className="h-4 w-4 mr-2" />
-                  Go to Staff Management
+                  Manage Staff
                   <ExternalLink className="h-4 w-4 ml-2" />
-                </button>
+                </Button>
               </Link>
             </CardContent>
           </Card>

@@ -8,14 +8,10 @@ import {
   Calendar,
   Users,
   Scissors,
-  Star,
   Settings,
   Menu,
   X,
   Plus,
-  Repeat,
-  BarChart3,
-  Package,
   UserCog,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -27,11 +23,7 @@ const navigation = [
   { name: "Calendar", href: "/app/calendar", icon: Calendar },
   { name: "Clients", href: "/app/clients", icon: Users },
   { name: "Staff", href: "/app/staff", icon: UserCog },
-  { name: "Recurring", href: "/app/recurring", icon: Repeat },
   { name: "Services", href: "/app/services", icon: Scissors },
-  { name: "Inventory", href: "/app/inventory", icon: Package },
-  { name: "Reports", href: "/app/reports", icon: BarChart3 },
-  { name: "Reviews", href: "/app/reviews", icon: Star },
   { name: "Settings", href: "/app/settings", icon: Settings },
 ]
 
