@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader2, ExternalLink, Copy, Check } from "lucide-react"
+import { Loader2, ExternalLink, Copy, Check, Palette } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,6 +20,8 @@ import {
 import { toast } from "@/components/ui/use-toast"
 import { organizationSchema, type OrganizationFormData } from "@/lib/validations"
 import { updateOrganization } from "@/lib/actions/organization"
+import { themes, themeOptions } from "@/lib/themes"
+import { cn } from "@/lib/utils"
 
 interface BusinessSettingsProps {
   organization: {
@@ -27,6 +29,7 @@ interface BusinessSettingsProps {
     name: string
     slug: string
     description: string | null
+    theme: string
     email: string | null
     phone: string | null
     address: string | null
@@ -65,6 +68,7 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
       name: organization.name,
       slug: organization.slug,
       description: organization.description || "",
+      theme: organization.theme || "blue",
       email: organization.email || "",
       phone: organization.phone || "",
       address: organization.address || "",
@@ -160,6 +164,55 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Theme Selection */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-5 w-5" />
+            Landing Page Theme
+          </CardTitle>
+          <CardDescription>
+            Choose a color theme for your public landing page
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {themeOptions.map((themeOption) => {
+              const theme = themes[themeOption.id]
+              const isSelected = form.watch("theme") === themeOption.id
+              return (
+                <button
+                  key={themeOption.id}
+                  type="button"
+                  onClick={() => form.setValue("theme", themeOption.id)}
+                  className={cn(
+                    "relative p-3 rounded-lg border-2 transition-all text-left",
+                    isSelected
+                      ? "border-primary ring-2 ring-primary/20"
+                      : "border-muted hover:border-muted-foreground/30"
+                  )}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={cn("w-6 h-6 rounded-full", theme.colors.primary)} />
+                    <div className={cn("w-4 h-4 rounded-full", theme.colors.accent)} />
+                  </div>
+                  <p className="font-medium text-sm">{themeOption.name}</p>
+                  <p className="text-xs text-muted-foreground">{themeOption.description}</p>
+                  {isSelected && (
+                    <div className="absolute top-2 right-2">
+                      <Check className="h-4 w-4 text-primary" />
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            Preview your landing page to see the theme in action
+          </p>
         </CardContent>
       </Card>
 

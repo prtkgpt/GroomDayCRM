@@ -7,12 +7,12 @@ import {
   Clock,
   Scissors,
   ChevronRight,
-  Star,
   PawPrint,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { db } from "@/lib/db"
+import { getTheme } from "@/lib/themes"
+import { cn } from "@/lib/utils"
 
 async function getOrganizationWithServices(slug: string) {
   const organization = await db.organization.findUnique({
@@ -50,6 +50,7 @@ export default async function BusinessLandingPage({
     notFound()
   }
 
+  const theme = getTheme(organization.theme)
   const mainServices = organization.services.filter((s) => !s.isAddOn)
   const addOns = organization.services.filter((s) => s.isAddOn)
 
@@ -63,13 +64,17 @@ export default async function BusinessLandingPage({
     .join(", ")
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 via-background to-background">
+    <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent" />
+      <section className={cn("relative overflow-hidden bg-gradient-to-b", theme.colors.gradient)}>
+        <div className={cn("absolute inset-0 bg-gradient-to-br", theme.colors.heroGradient)} />
         <div className="max-w-5xl mx-auto px-4 py-16 sm:py-24 relative">
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-6">
+            <div className={cn(
+              "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6",
+              theme.colors.badge,
+              theme.colors.badgeText
+            )}>
               <PawPrint className="h-4 w-4" />
               Professional Pet Grooming
             </div>
@@ -83,17 +88,22 @@ export default async function BusinessLandingPage({
             )}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href={`/${slug}/book`}>
-                <Button size="lg" className="text-lg px-8">
-                  <Scissors className="h-5 w-5 mr-2" />
+                <button className={cn(
+                  "inline-flex items-center justify-center gap-2 text-lg px-8 py-3 rounded-lg font-medium transition-colors",
+                  theme.colors.primary,
+                  theme.colors.primaryForeground,
+                  theme.colors.buttonHover
+                )}>
+                  <Scissors className="h-5 w-5" />
                   Book Appointment
-                </Button>
+                </button>
               </Link>
               {organization.phone && (
                 <a href={`tel:${organization.phone}`}>
-                  <Button size="lg" variant="outline" className="text-lg px-8">
-                    <Phone className="h-5 w-5 mr-2" />
+                  <button className="inline-flex items-center justify-center gap-2 text-lg px-8 py-3 rounded-lg font-medium border bg-background hover:bg-muted transition-colors">
+                    <Phone className="h-5 w-5" />
                     Call Us
-                  </Button>
+                  </button>
                 </a>
               )}
             </div>
@@ -118,7 +128,7 @@ export default async function BusinessLandingPage({
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="font-semibold text-lg">{service.name}</h3>
-                    <span className="text-xl font-bold text-primary">
+                    <span className={cn("text-xl font-bold", theme.colors.badgeText)}>
                       ${service.defaultPrice}
                     </span>
                   </div>
@@ -147,7 +157,7 @@ export default async function BusinessLandingPage({
                     className="inline-flex items-center gap-2 bg-background border rounded-full px-4 py-2"
                   >
                     <span className="font-medium">{service.name}</span>
-                    <span className="text-primary font-semibold">
+                    <span className={cn("font-semibold", theme.colors.badgeText)}>
                       +${service.defaultPrice}
                     </span>
                   </div>
@@ -159,10 +169,15 @@ export default async function BusinessLandingPage({
           {/* CTA */}
           <div className="text-center mt-12">
             <Link href={`/${slug}/book`}>
-              <Button size="lg">
+              <button className={cn(
+                "inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors",
+                theme.colors.primary,
+                theme.colors.primaryForeground,
+                theme.colors.buttonHover
+              )}>
                 Book Now
-                <ChevronRight className="h-5 w-5 ml-1" />
-              </Button>
+                <ChevronRight className="h-5 w-5" />
+              </button>
             </Link>
           </div>
         </div>
@@ -180,14 +195,17 @@ export default async function BusinessLandingPage({
                   {organization.phone && (
                     <a
                       href={`tel:${organization.phone}`}
-                      className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors"
+                      className="flex items-center gap-3 hover:opacity-80 transition-opacity"
                     >
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Phone className="h-5 w-5 text-primary" />
+                      <div className={cn(
+                        "h-10 w-10 rounded-full flex items-center justify-center",
+                        theme.colors.accent
+                      )}>
+                        <Phone className={cn("h-5 w-5", theme.colors.badgeText)} />
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Phone</p>
-                        <p className="font-medium text-foreground">{organization.phone}</p>
+                        <p className="font-medium">{organization.phone}</p>
                       </div>
                     </a>
                   )}
@@ -195,14 +213,17 @@ export default async function BusinessLandingPage({
                   {organization.email && (
                     <a
                       href={`mailto:${organization.email}`}
-                      className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors"
+                      className="flex items-center gap-3 hover:opacity-80 transition-opacity"
                     >
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Mail className="h-5 w-5 text-primary" />
+                      <div className={cn(
+                        "h-10 w-10 rounded-full flex items-center justify-center",
+                        theme.colors.accent
+                      )}>
+                        <Mail className={cn("h-5 w-5", theme.colors.badgeText)} />
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Email</p>
-                        <p className="font-medium text-foreground">{organization.email}</p>
+                        <p className="font-medium">{organization.email}</p>
                       </div>
                     </a>
                   )}
@@ -212,14 +233,17 @@ export default async function BusinessLandingPage({
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors"
+                      className="flex items-center gap-3 hover:opacity-80 transition-opacity"
                     >
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <MapPin className="h-5 w-5 text-primary" />
+                      <div className={cn(
+                        "h-10 w-10 rounded-full flex items-center justify-center",
+                        theme.colors.accent
+                      )}>
+                        <MapPin className={cn("h-5 w-5", theme.colors.badgeText)} />
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Location</p>
-                        <p className="font-medium text-foreground">{fullAddress}</p>
+                        <p className="font-medium">{fullAddress}</p>
                       </div>
                     </a>
                   )}
@@ -232,8 +256,11 @@ export default async function BusinessLandingPage({
               <CardContent className="p-6">
                 <h3 className="text-xl font-semibold mb-6">Business Hours</h3>
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Clock className="h-5 w-5 text-primary" />
+                  <div className={cn(
+                    "h-10 w-10 rounded-full flex items-center justify-center",
+                    theme.colors.accent
+                  )}>
+                    <Clock className={cn("h-5 w-5", theme.colors.badgeText)} />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Open Daily</p>
@@ -246,7 +273,7 @@ export default async function BusinessLandingPage({
                   </div>
                 </div>
 
-                <div className="mt-8 p-4 bg-primary/5 rounded-lg">
+                <div className={cn("mt-8 p-4 rounded-lg", theme.colors.accent)}>
                   <p className="text-sm text-center text-muted-foreground">
                     Book online anytime! We&apos;ll confirm your appointment within 24 hours.
                   </p>
@@ -258,17 +285,19 @@ export default async function BusinessLandingPage({
       </section>
 
       {/* Footer CTA */}
-      <section className="py-16 bg-primary text-primary-foreground">
+      <section className={cn("py-16", theme.colors.footer)}>
         <div className="max-w-5xl mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Book?</h2>
-          <p className="text-primary-foreground/80 mb-8 max-w-xl mx-auto">
+          <h2 className={cn("text-3xl font-bold mb-4", theme.colors.primaryForeground)}>
+            Ready to Book?
+          </h2>
+          <p className={cn("mb-8 max-w-xl mx-auto opacity-90", theme.colors.footerText)}>
             Give your furry friend the pampering they deserve. Book your appointment today!
           </p>
           <Link href={`/${slug}/book`}>
-            <Button size="lg" variant="secondary" className="text-lg px-8">
-              <Scissors className="h-5 w-5 mr-2" />
+            <button className="inline-flex items-center justify-center gap-2 text-lg px-8 py-3 rounded-lg font-medium bg-white text-gray-900 hover:bg-gray-100 transition-colors">
+              <Scissors className="h-5 w-5" />
               Book Appointment
-            </Button>
+            </button>
           </Link>
         </div>
       </section>
@@ -282,7 +311,7 @@ export default async function BusinessLandingPage({
             </p>
             <p className="text-sm text-muted-foreground">
               Powered by{" "}
-              <a href="/" className="text-primary hover:underline">
+              <a href="/" className={cn("hover:underline", theme.colors.badgeText)}>
                 GroomDayCRM
               </a>
             </p>

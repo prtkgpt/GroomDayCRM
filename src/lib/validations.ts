@@ -75,6 +75,7 @@ export const organizationSchema = z.object({
   name: z.string().min(1, "Business name is required"),
   slug: z.string().min(1, "Booking URL is required").regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and hyphens allowed"),
   description: z.string().optional(),
+  theme: z.string().default("blue"),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
   phone: z.string().optional(),
   address: z.string().optional(),

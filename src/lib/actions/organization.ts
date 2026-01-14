@@ -40,6 +40,7 @@ export async function updateOrganization(data: OrganizationFormData) {
       name: validated.name,
       slug: validated.slug,
       description: validated.description || null,
+      theme: validated.theme,
       email: validated.email || null,
       phone: validated.phone || null,
       address: validated.address || null,

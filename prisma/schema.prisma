@@ -13,6 +13,7 @@ model Organization {
   name            String
   slug            String   @unique // URL-friendly identifier for public booking
   description     String?  // Business description for landing page
+  theme           String   @default("blue") // Theme color for public pages
   email           String?
   phone           String?
   address         String?
