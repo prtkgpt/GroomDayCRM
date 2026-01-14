@@ -92,6 +92,7 @@ model Client {
 
   pets            Pet[]
   appointments    Appointment[]
+  sessions        CustomerSession[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -386,4 +387,27 @@ enum MessageStatus {
   SENT
   DELIVERED
   FAILED
+}
+
+// Customer portal session (magic link auth)
+model CustomerSession {
+  id              String   @id @default(cuid())
+
+  // Magic link token (for login)
+  token           String   @unique
+  tokenExpiresAt  DateTime
+
+  // Session token (after login)
+  sessionToken    String?  @unique
+  sessionExpiresAt DateTime?
+
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([token])
+  @@index([sessionToken])
 }
