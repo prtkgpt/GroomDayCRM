@@ -34,6 +34,7 @@ import { AppointmentActions } from "./appointment-actions"
 import { PaymentSection } from "./payment-section"
 import { MessageSection } from "./message-section"
 import { FeedbackSection } from "./feedback-section"
+import { StaffAssignment } from "./staff-assignment"
 
 export default async function AppointmentDetailPage({
   params,
@@ -248,6 +249,12 @@ export default async function AppointmentDetailPage({
               )}
             </CardContent>
           </Card>
+
+          {/* Staff Assignment */}
+          <StaffAssignment
+            appointmentId={appointment.id}
+            currentStaff={appointment.staff}
+          />
 
           {/* Notes */}
           {(appointment.notes || appointment.internalNotes) && (

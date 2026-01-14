@@ -73,6 +73,7 @@ export async function getAppointment(id: string) {
         orderBy: { createdAt: "desc" },
         take: 1,
       },
+      staff: true,
     },
   })
 
