@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { DollarSign, Check, Loader2 } from "lucide-react"
+import { DollarSign, Check, Loader2, CreditCard, Send, Copy } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge"
 import { toast } from "@/components/ui/use-toast"
 import { formatCurrency } from "@/lib/utils"
 import { recordPayment } from "@/lib/actions/payments"
+import { createPaymentLink, createCheckoutSession } from "@/lib/actions/stripe"
 
 interface PaymentSectionProps {
   appointment: {
@@ -33,6 +34,9 @@ interface PaymentSectionProps {
     subtotal: number
     tipAmount: number
     totalAmount: number
+    client: {
+      email: string | null
+    }
     payment: {
       id: string
       amount: number
@@ -41,14 +45,18 @@ interface PaymentSectionProps {
       method: string
       status: string
       paidAt: Date | null
+      stripePaymentId: string | null
     } | null
   }
+  hasStripe?: boolean
 }
 
-export function PaymentSection({ appointment }: PaymentSectionProps) {
+export function PaymentSection({ appointment, hasStripe = false }: PaymentSectionProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [isStripeLoading, setIsStripeLoading] = useState(false)
   const [open, setOpen] = useState(false)
+  const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null)
   const [amount, setAmount] = useState(appointment.subtotal.toString())
   const [tipAmount, setTipAmount] = useState("0")
   const [method, setMethod] = useState<string>("CASH")
@@ -69,6 +77,50 @@ export function PaymentSection({ appointment }: PaymentSectionProps) {
         toast({ title: "Failed to record payment", variant: "destructive" })
       }
     })
+  }
+
+  const handleStripeCheckout = async () => {
+    setIsStripeLoading(true)
+    try {
+      const result = await createCheckoutSession(appointment.id)
+      if (result.url) {
+        window.open(result.url, "_blank")
+      }
+    } catch (error) {
+      toast({
+        title: "Failed to create checkout",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      })
+    } finally {
+      setIsStripeLoading(false)
+    }
+  }
+
+  const handleCreatePaymentLink = async () => {
+    setIsStripeLoading(true)
+    try {
+      const result = await createPaymentLink(appointment.id)
+      if (result.url) {
+        setPaymentLinkUrl(result.url)
+        toast({ title: "Payment link created" })
+      }
+    } catch (error) {
+      toast({
+        title: "Failed to create payment link",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      })
+    } finally {
+      setIsStripeLoading(false)
+    }
+  }
+
+  const copyPaymentLink = () => {
+    if (paymentLinkUrl) {
+      navigator.clipboard.writeText(paymentLinkUrl)
+      toast({ title: "Link copied to clipboard" })
+    }
   }
 
   if (appointment.payment) {
@@ -131,9 +183,59 @@ export function PaymentSection({ appointment }: PaymentSectionProps) {
             </span>
           </div>
 
+          {/* Stripe Payment Options */}
+          {hasStripe && (
+            <div className="space-y-2">
+              <Button
+                onClick={handleStripeCheckout}
+                disabled={isStripeLoading}
+                className="w-full bg-[#635bff] hover:bg-[#5851ea]"
+              >
+                {isStripeLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <CreditCard className="h-4 w-4 mr-2" />
+                )}
+                Pay with Stripe
+              </Button>
+
+              {!paymentLinkUrl ? (
+                <Button
+                  variant="outline"
+                  onClick={handleCreatePaymentLink}
+                  disabled={isStripeLoading}
+                  className="w-full"
+                >
+                  {isStripeLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
+                  Create Payment Link
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Input value={paymentLinkUrl} readOnly className="text-xs" />
+                  <Button variant="outline" size="icon" onClick={copyPaymentLink}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-yellow-300" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-yellow-50 px-2 text-yellow-700">or record manually</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="w-full">
+              <Button variant={hasStripe ? "outline" : "default"} className="w-full">
                 <DollarSign className="h-4 w-4 mr-2" />
                 Record Payment
               </Button>

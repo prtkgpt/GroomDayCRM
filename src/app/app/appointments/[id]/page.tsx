@@ -20,6 +20,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { getAppointment } from "@/lib/actions/appointments"
+import { hasStripeConfigured } from "@/lib/stripe"
+import { requireOrganizationId } from "@/lib/auth"
 import {
   formatCurrency,
   formatTime,
@@ -39,11 +41,16 @@ export default async function AppointmentDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const appointment = await getAppointment(id)
+  const [appointment, organizationId] = await Promise.all([
+    getAppointment(id),
+    requireOrganizationId(),
+  ])
 
   if (!appointment) {
     notFound()
   }
+
+  const hasStripe = await hasStripeConfigured(organizationId)
 
   return (
     <div className="p-4 lg:p-8 space-y-6">
@@ -161,7 +168,7 @@ export default async function AppointmentDetailPage({
           </Card>
 
           {/* Payment */}
-          <PaymentSection appointment={appointment} />
+          <PaymentSection appointment={appointment} hasStripe={hasStripe} />
 
           {/* Messages */}
           <MessageSection appointment={appointment} />
