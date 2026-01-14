@@ -157,7 +157,8 @@ export default function NewInvoicePage() {
                     <CommandInput
                       placeholder="Search clients..."
                       value={clientSearch}
-                      onValueChange={(value) => {
+                      onChange={(e) => {
+                        const value = e.target.value
                         setClientSearch(value)
                         if (value.length > 1) {
                           searchClients(value)

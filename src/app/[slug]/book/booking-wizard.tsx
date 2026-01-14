@@ -11,15 +11,18 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Loader2
+  Loader2,
+  Bell
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { getAvailableSlots, submitBooking } from "@/lib/actions/public-booking"
+import { addToPublicWaitlist } from "@/lib/actions/waitlist"
 
 interface Organization {
   id: string
@@ -81,6 +84,18 @@ export function BookingWizard({ organization, services }: BookingWizardProps) {
     notes: "",
   })
   const [notes, setNotes] = useState("")
+
+  // Waitlist state
+  const [showWaitlistForm, setShowWaitlistForm] = useState(false)
+  const [waitlistSubmitting, setWaitlistSubmitting] = useState(false)
+  const [waitlistSuccess, setWaitlistSuccess] = useState(false)
+  const [waitlistPreferences, setWaitlistPreferences] = useState({
+    isFlexibleDate: true,
+    isFlexibleTime: true,
+    preferredDays: [] as number[],
+    preferredTimeStart: "",
+    preferredTimeEnd: "",
+  })
 
   // Calculate totals
   const selectedServiceObjects = services.filter(s => selectedServices.includes(s.id))
@@ -174,6 +189,40 @@ export function BookingWizard({ organization, services }: BookingWizardProps) {
     }
   }
 
+  // Submit to waitlist
+  const handleWaitlistSubmit = async () => {
+    if (!clientInfo.firstName || !clientInfo.lastName || (!clientInfo.email && !clientInfo.phone) || !petInfo.name) {
+      return
+    }
+
+    setWaitlistSubmitting(true)
+    try {
+      await addToPublicWaitlist({
+        organizationId: organization.id,
+        clientEmail: clientInfo.email,
+        clientFirstName: clientInfo.firstName,
+        clientLastName: clientInfo.lastName,
+        clientPhone: clientInfo.phone || undefined,
+        petName: petInfo.name,
+        petSpecies: petInfo.species,
+        petBreed: petInfo.breed || undefined,
+        serviceIds: selectedServices,
+        preferredDate: selectedDate || undefined,
+        preferredDayOfWeek: waitlistPreferences.preferredDays.length > 0 ? waitlistPreferences.preferredDays : undefined,
+        preferredTimeStart: waitlistPreferences.preferredTimeStart || undefined,
+        preferredTimeEnd: waitlistPreferences.preferredTimeEnd || undefined,
+        isFlexibleDate: waitlistPreferences.isFlexibleDate,
+        isFlexibleTime: waitlistPreferences.isFlexibleTime,
+        notes: petInfo.notes || undefined,
+      })
+      setWaitlistSuccess(true)
+    } catch (error) {
+      console.error("Waitlist error:", error)
+    } finally {
+      setWaitlistSubmitting(false)
+    }
+  }
+
   // Booking confirmed view
   if (bookingResult?.success) {
     return (
@@ -203,6 +252,37 @@ export function BookingWizard({ organization, services }: BookingWizardProps) {
           </div>
           <p className="text-sm text-center text-muted-foreground">
             A confirmation email will be sent to {clientInfo.email || clientInfo.phone}
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Waitlist success view
+  if (waitlistSuccess) {
+    return (
+      <Card className="overflow-hidden">
+        <div className="bg-gradient-to-br from-amber-50 to-transparent p-8 text-center">
+          <div className="h-16 w-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+            <Bell className="h-8 w-8 text-amber-600" />
+          </div>
+          <h2 className="text-2xl font-semibold mb-2">You're on the Waitlist!</h2>
+          <p className="text-muted-foreground">
+            We'll notify you as soon as a slot opens up.
+          </p>
+        </div>
+        <CardContent className="p-6 space-y-4">
+          <div className="bg-muted/50 rounded-xl p-4 space-y-2">
+            <p className="font-medium">Services Requested</p>
+            <p className="text-sm text-muted-foreground">
+              {selectedServiceObjects.map(s => s.name).join(", ")}
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              for {petInfo.name}
+            </p>
+          </div>
+          <p className="text-sm text-center text-muted-foreground">
+            We'll contact you at {clientInfo.email || clientInfo.phone} when an opening becomes available.
           </p>
         </CardContent>
       </Card>
@@ -351,9 +431,180 @@ export function BookingWizard({ organization, services }: BookingWizardProps) {
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
                   ) : availableSlots.length === 0 ? (
-                    <p className="text-center py-8 text-muted-foreground">
-                      No available slots for this date
-                    </p>
+                    <div className="py-6">
+                      {!showWaitlistForm ? (
+                        <div className="text-center space-y-4">
+                          <p className="text-muted-foreground">
+                            No available slots for this date
+                          </p>
+                          <Button
+                            variant="outline"
+                            onClick={() => setShowWaitlistForm(true)}
+                            className="gap-2"
+                          >
+                            <Bell className="h-4 w-4" />
+                            Join Waitlist
+                          </Button>
+                          <p className="text-xs text-muted-foreground">
+                            Get notified when a slot opens up
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-medium">Join Waitlist</h3>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setShowWaitlistForm(false)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+
+                          {/* Contact Info */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label htmlFor="wl-firstName" className="text-xs">First Name *</Label>
+                              <Input
+                                id="wl-firstName"
+                                value={clientInfo.firstName}
+                                onChange={e => setClientInfo(prev => ({ ...prev, firstName: e.target.value }))}
+                                placeholder="John"
+                                className="h-9"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="wl-lastName" className="text-xs">Last Name *</Label>
+                              <Input
+                                id="wl-lastName"
+                                value={clientInfo.lastName}
+                                onChange={e => setClientInfo(prev => ({ ...prev, lastName: e.target.value }))}
+                                placeholder="Doe"
+                                className="h-9"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <Label htmlFor="wl-email" className="text-xs">Email *</Label>
+                            <Input
+                              id="wl-email"
+                              type="email"
+                              value={clientInfo.email}
+                              onChange={e => setClientInfo(prev => ({ ...prev, email: e.target.value }))}
+                              placeholder="john@example.com"
+                              className="h-9"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="wl-phone" className="text-xs">Phone</Label>
+                            <Input
+                              id="wl-phone"
+                              type="tel"
+                              value={clientInfo.phone}
+                              onChange={e => setClientInfo(prev => ({ ...prev, phone: e.target.value }))}
+                              placeholder="(555) 123-4567"
+                              className="h-9"
+                            />
+                          </div>
+
+                          {/* Pet Info */}
+                          <div className="pt-2 border-t">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label htmlFor="wl-petName" className="text-xs">Pet Name *</Label>
+                                <Input
+                                  id="wl-petName"
+                                  value={petInfo.name}
+                                  onChange={e => setPetInfo(prev => ({ ...prev, name: e.target.value }))}
+                                  placeholder="Max"
+                                  className="h-9"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="wl-species" className="text-xs">Species</Label>
+                                <select
+                                  id="wl-species"
+                                  value={petInfo.species}
+                                  onChange={e => setPetInfo(prev => ({ ...prev, species: e.target.value }))}
+                                  className="flex h-9 w-full rounded-xl border border-input bg-background px-3 py-1 text-sm"
+                                >
+                                  <option value="Dog">Dog</option>
+                                  <option value="Cat">Cat</option>
+                                  <option value="Other">Other</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Preferences */}
+                          <div className="pt-2 border-t space-y-3">
+                            <p className="text-xs font-medium text-muted-foreground">Scheduling Preferences</p>
+
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor="flexible-date" className="text-sm">Flexible on date</Label>
+                              <Switch
+                                id="flexible-date"
+                                checked={waitlistPreferences.isFlexibleDate}
+                                onCheckedChange={checked => setWaitlistPreferences(prev => ({ ...prev, isFlexibleDate: checked }))}
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor="flexible-time" className="text-sm">Flexible on time</Label>
+                              <Switch
+                                id="flexible-time"
+                                checked={waitlistPreferences.isFlexibleTime}
+                                onCheckedChange={checked => setWaitlistPreferences(prev => ({ ...prev, isFlexibleTime: checked }))}
+                              />
+                            </div>
+
+                            {!waitlistPreferences.isFlexibleTime && (
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Label htmlFor="wl-timeStart" className="text-xs">Earliest Time</Label>
+                                  <Input
+                                    id="wl-timeStart"
+                                    type="time"
+                                    value={waitlistPreferences.preferredTimeStart}
+                                    onChange={e => setWaitlistPreferences(prev => ({ ...prev, preferredTimeStart: e.target.value }))}
+                                    className="h-9"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="wl-timeEnd" className="text-xs">Latest Time</Label>
+                                  <Input
+                                    id="wl-timeEnd"
+                                    type="time"
+                                    value={waitlistPreferences.preferredTimeEnd}
+                                    onChange={e => setWaitlistPreferences(prev => ({ ...prev, preferredTimeEnd: e.target.value }))}
+                                    className="h-9"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <Button
+                            className="w-full"
+                            onClick={handleWaitlistSubmit}
+                            disabled={waitlistSubmitting || !clientInfo.firstName || !clientInfo.lastName || !clientInfo.email || !petInfo.name}
+                          >
+                            {waitlistSubmitting ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Joining...
+                              </>
+                            ) : (
+                              <>
+                                <Bell className="h-4 w-4 mr-2" />
+                                Join Waitlist
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                       {availableSlots.map(slot => (

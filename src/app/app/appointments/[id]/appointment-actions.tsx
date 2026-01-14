@@ -11,6 +11,8 @@ import {
   AlertTriangle,
   Trash2,
   Loader2,
+  Bell,
+  Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -30,13 +32,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
-import { updateAppointmentStatus, deleteAppointment } from "@/lib/actions/appointments"
+import { updateAppointmentStatus, deleteAppointment, cancelAppointment } from "@/lib/actions/appointments"
 
 interface AppointmentActionsProps {
   appointment: {
     id: string
     status: string
+    dateTime: Date
+    duration: number
   }
 }
 
@@ -44,6 +59,51 @@ export function AppointmentActions({ appointment }: AppointmentActionsProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [cancelReason, setCancelReason] = useState("")
+  const [notifyClient, setNotifyClient] = useState(true)
+  const [autoNotifyWaitlist, setAutoNotifyWaitlist] = useState(true)
+  const [cancelResult, setCancelResult] = useState<{
+    matchingWaitlistEntries: any[]
+    notifiedCount: number
+  } | null>(null)
+
+  const handleCancel = async () => {
+    startTransition(async () => {
+      try {
+        const result = await cancelAppointment(appointment.id, {
+          reason: cancelReason || undefined,
+          notifyClient,
+          notifyWaitlist: true,
+          autoNotifyTopMatch: autoNotifyWaitlist,
+        })
+
+        setCancelResult({
+          matchingWaitlistEntries: result.matchingWaitlistEntries,
+          notifiedCount: result.notifiedCount,
+        })
+
+        if (result.notifiedCount > 0) {
+          toast({
+            title: "Appointment cancelled",
+            description: `Notified ${result.notifiedCount} waitlisted client(s) about the available slot.`,
+          })
+        } else if (result.matchingWaitlistEntries.length > 0) {
+          toast({
+            title: "Appointment cancelled",
+            description: `Found ${result.matchingWaitlistEntries.length} potential waitlist match(es). Visit the Waitlist page to notify them.`,
+          })
+        } else {
+          toast({ title: "Appointment cancelled" })
+        }
+
+        setShowCancelDialog(false)
+        router.refresh()
+      } catch (error) {
+        toast({ title: "Failed to cancel appointment", variant: "destructive" })
+      }
+    })
+  }
 
   const updateStatus = (
     status: "SCHEDULED" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "NO_SHOW" | "CANCELED"
@@ -150,12 +210,12 @@ export function AppointmentActions({ appointment }: AppointmentActionsProps) {
               Mark as No Show
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => updateStatus("CANCELED")}
+              onClick={() => setShowCancelDialog(true)}
               disabled={isPending || appointment.status === "CANCELED"}
               className="text-muted-foreground"
             >
               <X className="h-4 w-4 mr-2" />
-              Mark as Canceled
+              Cancel Appointment
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -191,6 +251,99 @@ export function AppointmentActions({ appointment }: AppointmentActionsProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Cancel Dialog with Waitlist Notification */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancel Appointment</DialogTitle>
+            <DialogDescription>
+              Cancel this appointment and optionally notify waitlisted clients about the available slot.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="cancel-reason">Cancellation Reason (optional)</Label>
+              <Input
+                id="cancel-reason"
+                placeholder="e.g., Client requested, Schedule conflict..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-3 pt-2 border-t">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="notify-client">Notify Client</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Send cancellation email to the client
+                  </p>
+                </div>
+                <Switch
+                  id="notify-client"
+                  checked={notifyClient}
+                  onCheckedChange={setNotifyClient}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="notify-waitlist" className="flex items-center gap-2">
+                    <Bell className="h-4 w-4" />
+                    Auto-Notify Waitlist
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically notify the top matching waitlist client
+                  </p>
+                </div>
+                <Switch
+                  id="notify-waitlist"
+                  checked={autoNotifyWaitlist}
+                  onCheckedChange={setAutoNotifyWaitlist}
+                />
+              </div>
+            </div>
+
+            {new Date(appointment.dateTime) > new Date() && (
+              <div className="bg-amber-50 dark:bg-amber-950/20 rounded-lg p-3 flex items-start gap-2">
+                <Users className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  This slot will be offered to waitlisted clients who match the date/time preferences.
+                  {autoNotifyWaitlist
+                    ? " The highest priority match will be automatically notified."
+                    : " You can manually notify clients from the Waitlist page."
+                  }
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowCancelDialog(false)}
+            >
+              Keep Appointment
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancel}
+              disabled={isPending}
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Cancelling...
+                </>
+              ) : (
+                "Cancel Appointment"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

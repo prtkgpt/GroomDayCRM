@@ -5,6 +5,7 @@ import { db } from "@/lib/db"
 import { requireOrganizationId } from "@/lib/auth"
 import { appointmentSchema, type AppointmentFormData } from "@/lib/validations"
 import { Resend } from "resend"
+import { findMatchingWaitlistEntries, notifyWaitlistClient } from "./waitlist"
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -215,6 +216,111 @@ export async function updateAppointmentStatus(
   revalidatePath("/app/calendar")
   revalidatePath(`/app/appointments/${id}`)
   return appointment
+}
+
+// Cancel appointment with waitlist notification
+export async function cancelAppointment(
+  id: string,
+  options?: {
+    reason?: string
+    notifyClient?: boolean
+    notifyWaitlist?: boolean
+    autoNotifyTopMatch?: boolean
+  }
+) {
+  const organizationId = await requireOrganizationId()
+
+  // Get the appointment details before cancelling
+  const appointment = await db.appointment.findFirst({
+    where: { id, organizationId },
+    include: {
+      client: true,
+      appointmentPets: { include: { pet: true } },
+      appointmentServices: { include: { service: true } },
+      organization: true,
+      staff: true,
+    },
+  })
+
+  if (!appointment) {
+    throw new Error("Appointment not found")
+  }
+
+  // Update appointment status to cancelled
+  await db.appointment.update({
+    where: { id },
+    data: {
+      status: "CANCELED",
+      internalNotes: options?.reason
+        ? `${appointment.internalNotes || ""}\nCancelled: ${options.reason}`.trim()
+        : appointment.internalNotes,
+    },
+  })
+
+  // Notify original client about cancellation
+  if (options?.notifyClient && resend && appointment.client.email) {
+    const appointmentDate = new Date(appointment.dateTime).toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    })
+    const appointmentTime = new Date(appointment.dateTime).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    })
+    const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev"
+
+    try {
+      await resend.emails.send({
+        from: fromEmail,
+        to: appointment.client.email,
+        subject: `Appointment Cancelled - ${appointment.organization.name}`,
+        html: `
+          <h2>Appointment Cancelled</h2>
+          <p>Hi ${appointment.client.firstName},</p>
+          <p>Your grooming appointment on ${appointmentDate} at ${appointmentTime} has been cancelled.</p>
+          ${options?.reason ? `<p><strong>Reason:</strong> ${options.reason}</p>` : ""}
+          <p>We apologize for any inconvenience. Please feel free to book another appointment at your convenience.</p>
+          <p>Best regards,<br>${appointment.organization.name}</p>
+        `,
+      })
+    } catch (error) {
+      console.error("Failed to send cancellation email:", error)
+    }
+  }
+
+  // Find and notify waitlist clients about the newly available slot
+  let matchingWaitlistEntries: any[] = []
+  if (options?.notifyWaitlist !== false) {
+    try {
+      matchingWaitlistEntries = await findMatchingWaitlistEntries(
+        appointment.dateTime,
+        appointment.duration,
+        appointment.staffId || undefined
+      )
+
+      // Auto-notify the top match if requested
+      if (options?.autoNotifyTopMatch && matchingWaitlistEntries.length > 0) {
+        const topMatch = matchingWaitlistEntries[0]
+        await notifyWaitlistClient(topMatch.id, appointment.dateTime, 24)
+        console.log(`[WAITLIST] Auto-notified ${topMatch.client.email} about cancelled slot`)
+      }
+    } catch (error) {
+      console.error("Failed to find matching waitlist entries:", error)
+    }
+  }
+
+  revalidatePath("/app")
+  revalidatePath("/app/calendar")
+  revalidatePath("/app/waitlist")
+  revalidatePath(`/app/appointments/${id}`)
+
+  return {
+    appointment,
+    matchingWaitlistEntries,
+    notifiedCount: options?.autoNotifyTopMatch && matchingWaitlistEntries.length > 0 ? 1 : 0,
+  }
 }
 
 export async function getPendingAppointments() {
