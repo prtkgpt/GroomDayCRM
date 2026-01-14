@@ -15,6 +15,12 @@ export default async function SettingsPage() {
     return <div>Organization not found</div>
   }
 
+  // Ensure theme has a default value for backwards compatibility
+  const orgWithDefaults = {
+    ...organization,
+    theme: organization.theme || "blue",
+  }
+
   return (
     <div className="p-4 lg:p-8 space-y-6">
       {/* Header */}
@@ -42,7 +48,7 @@ export default async function SettingsPage() {
         </TabsList>
 
         <TabsContent value="business">
-          <BusinessSettings organization={organization} />
+          <BusinessSettings organization={orgWithDefaults} />
         </TabsContent>
 
         <TabsContent value="messages">
