@@ -25,6 +25,19 @@ model Organization {
   businessHoursEnd   String @default("17:00")
   appointmentBuffer  Int    @default(15) // minutes between appointments
 
+  // Integration API keys (stored encrypted in production)
+  stripeSecretKey     String?
+  stripePublishableKey String?
+  twilioAccountSid    String?
+  twilioAuthToken     String?
+  twilioPhoneNumber   String?
+
+  // Social & Review links
+  googleReviewUrl     String?
+  yelpUrl             String?
+  facebookUrl         String?
+  instagramUrl        String?
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

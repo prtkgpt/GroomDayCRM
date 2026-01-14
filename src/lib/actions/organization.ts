@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache"
 import { db } from "@/lib/db"
 import { requireOrganizationId, getUser } from "@/lib/auth"
-import { organizationSchema, type OrganizationFormData } from "@/lib/validations"
+import {
+  organizationSchema,
+  integrationsSchema,
+  type OrganizationFormData,
+  type IntegrationsFormData,
+} from "@/lib/validations"
 
 export async function getOrganization() {
   const organizationId = await requireOrganizationId()
@@ -152,4 +157,48 @@ export async function getDashboardStats() {
     totalPets,
     monthlyRevenue: monthlyRevenue._sum.totalAmount || 0,
   }
+}
+
+export async function getIntegrations() {
+  const organizationId = await requireOrganizationId()
+
+  const organization = await db.organization.findUnique({
+    where: { id: organizationId },
+    select: {
+      stripeSecretKey: true,
+      stripePublishableKey: true,
+      twilioAccountSid: true,
+      twilioAuthToken: true,
+      twilioPhoneNumber: true,
+      googleReviewUrl: true,
+      yelpUrl: true,
+      facebookUrl: true,
+      instagramUrl: true,
+    },
+  })
+
+  return organization
+}
+
+export async function updateIntegrations(data: IntegrationsFormData) {
+  const organizationId = await requireOrganizationId()
+  const validated = integrationsSchema.parse(data)
+
+  const organization = await db.organization.update({
+    where: { id: organizationId },
+    data: {
+      stripeSecretKey: validated.stripeSecretKey || null,
+      stripePublishableKey: validated.stripePublishableKey || null,
+      twilioAccountSid: validated.twilioAccountSid || null,
+      twilioAuthToken: validated.twilioAuthToken || null,
+      twilioPhoneNumber: validated.twilioPhoneNumber || null,
+      googleReviewUrl: validated.googleReviewUrl || null,
+      yelpUrl: validated.yelpUrl || null,
+      facebookUrl: validated.facebookUrl || null,
+      instagramUrl: validated.instagramUrl || null,
+    },
+  })
+
+  revalidatePath("/app/settings")
+  return organization
 }

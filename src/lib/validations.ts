@@ -98,3 +98,22 @@ export const messageTemplateSchema = z.object({
 })
 
 export type MessageTemplateFormData = z.infer<typeof messageTemplateSchema>
+
+export const integrationsSchema = z.object({
+  // Stripe payment processing
+  stripeSecretKey: z.string().optional().or(z.literal("")),
+  stripePublishableKey: z.string().optional().or(z.literal("")),
+
+  // Twilio SMS
+  twilioAccountSid: z.string().optional().or(z.literal("")),
+  twilioAuthToken: z.string().optional().or(z.literal("")),
+  twilioPhoneNumber: z.string().optional().or(z.literal("")),
+
+  // Social & Review links
+  googleReviewUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
+  yelpUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
+  facebookUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
+  instagramUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
+})
+
+export type IntegrationsFormData = z.infer<typeof integrationsSchema>

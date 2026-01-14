@@ -1,14 +1,16 @@
-import { Settings, Building, Clock, MessageSquare, Users } from "lucide-react"
+import { Settings, Building, Clock, MessageSquare, Users, Plug } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { getOrganization, getMessageTemplates } from "@/lib/actions/organization"
+import { getOrganization, getMessageTemplates, getIntegrations } from "@/lib/actions/organization"
 import { BusinessSettings } from "./business-settings"
 import { MessageTemplates } from "./message-templates"
+import { IntegrationsSettings } from "./integrations-settings"
 
 export default async function SettingsPage() {
-  const [organization, templates] = await Promise.all([
+  const [organization, templates, integrations] = await Promise.all([
     getOrganization(),
     getMessageTemplates(),
+    getIntegrations(),
   ])
 
   if (!organization) {
@@ -32,10 +34,14 @@ export default async function SettingsPage() {
       </div>
 
       <Tabs defaultValue="business" className="space-y-6">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="business">
             <Building className="h-4 w-4 mr-2" />
             Business
+          </TabsTrigger>
+          <TabsTrigger value="integrations">
+            <Plug className="h-4 w-4 mr-2" />
+            Integrations
           </TabsTrigger>
           <TabsTrigger value="messages">
             <MessageSquare className="h-4 w-4 mr-2" />
@@ -49,6 +55,22 @@ export default async function SettingsPage() {
 
         <TabsContent value="business">
           <BusinessSettings organization={orgWithDefaults} />
+        </TabsContent>
+
+        <TabsContent value="integrations">
+          <IntegrationsSettings
+            integrations={{
+              stripeSecretKey: integrations?.stripeSecretKey || null,
+              stripePublishableKey: integrations?.stripePublishableKey || null,
+              twilioAccountSid: integrations?.twilioAccountSid || null,
+              twilioAuthToken: integrations?.twilioAuthToken || null,
+              twilioPhoneNumber: integrations?.twilioPhoneNumber || null,
+              googleReviewUrl: integrations?.googleReviewUrl || null,
+              yelpUrl: integrations?.yelpUrl || null,
+              facebookUrl: integrations?.facebookUrl || null,
+              instagramUrl: integrations?.instagramUrl || null,
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="messages">
