@@ -50,6 +50,7 @@ model Organization {
   messageLogs     MessageLog[]
   feedbacks       Feedback[]
   feedbackRequests FeedbackRequest[]
+  recurringSchedules RecurringSchedule[]
 }
 
 // User account (linked to Clerk)
@@ -98,6 +99,7 @@ model Client {
   sessions        CustomerSession[]
   feedbacks       Feedback[]
   feedbackRequests FeedbackRequest[]
+  recurringSchedules RecurringSchedule[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -132,6 +134,7 @@ model Pet {
 
   appointmentPets AppointmentPet[]
   vaccinations    VaccinationRecord[]
+  recurringSchedulePets RecurringSchedulePet[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -178,6 +181,7 @@ model Service {
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   appointmentServices AppointmentService[]
+  recurringScheduleServices RecurringScheduleService[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -213,6 +217,10 @@ model Appointment {
   organizationId  String
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  // Recurring appointment link
+  recurringScheduleId String?
+  recurringSchedule   RecurringSchedule? @relation(fields: [recurringScheduleId], references: [id], onDelete: SetNull)
+
   // Relations
   appointmentPets AppointmentPet[]
   appointmentServices AppointmentService[]
@@ -226,6 +234,7 @@ model Appointment {
 
   @@index([organizationId, dateTime])
   @@index([clientId])
+  @@index([recurringScheduleId])
 }
 
 enum AppointmentStatus {
@@ -470,4 +479,95 @@ model FeedbackRequest {
   @@index([token])
   @@index([organizationId])
   @@index([appointmentId])
+}
+
+// Recurring appointment schedule
+model RecurringSchedule {
+  id              String   @id @default(cuid())
+
+  name            String?  // Optional friendly name like "Max's monthly groom"
+
+  frequency       RecurrenceFrequency
+  dayOfWeek       Int?     // 0=Sunday, 1=Monday, ... 6=Saturday (for WEEKLY/BIWEEKLY)
+  dayOfMonth      Int?     // 1-31 (for MONTHLY)
+  time            String   // HH:MM format (24-hour)
+
+  duration        Int      // Total duration in minutes
+
+  startDate       DateTime
+  endDate         DateTime? // Optional end date
+
+  // Location info
+  locationType    LocationType @default(CLIENT_HOME)
+  locationAddress String?
+  locationNotes   String?
+
+  notes           String?
+
+  isActive        Boolean  @default(true)
+
+  // Last generated appointment date (to track progress)
+  lastGeneratedDate DateTime?
+
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Relations
+  appointments    Appointment[]
+  pets            RecurringSchedulePet[]
+  services        RecurringScheduleService[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([clientId])
+  @@index([isActive])
+}
+
+enum RecurrenceFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+// Junction table for RecurringSchedule <-> Pet
+model RecurringSchedulePet {
+  id                  String   @id @default(cuid())
+
+  recurringScheduleId String
+  recurringSchedule   RecurringSchedule @relation(fields: [recurringScheduleId], references: [id], onDelete: Cascade)
+
+  petId               String
+  pet                 Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  createdAt           DateTime @default(now())
+
+  @@unique([recurringScheduleId, petId])
+  @@index([recurringScheduleId])
+  @@index([petId])
+}
+
+// Junction table for RecurringSchedule <-> Service
+model RecurringScheduleService {
+  id                  String   @id @default(cuid())
+
+  recurringScheduleId String
+  recurringSchedule   RecurringSchedule @relation(fields: [recurringScheduleId], references: [id], onDelete: Cascade)
+
+  serviceId           String
+  service             Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  // Override prices (optional)
+  price               Float?
+  duration            Int?     // in minutes
+
+  createdAt           DateTime @default(now())
+
+  @@unique([recurringScheduleId, serviceId])
+  @@index([recurringScheduleId])
+  @@index([serviceId])
 }

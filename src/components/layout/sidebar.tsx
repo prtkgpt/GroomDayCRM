@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   Plus,
+  Repeat,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -22,6 +23,7 @@ const navigation = [
   { name: "Dashboard", href: "/app", icon: LayoutDashboard },
   { name: "Calendar", href: "/app/calendar", icon: Calendar },
   { name: "Clients", href: "/app/clients", icon: Users },
+  { name: "Recurring", href: "/app/recurring", icon: Repeat },
   { name: "Services", href: "/app/services", icon: Scissors },
   { name: "Reviews", href: "/app/reviews", icon: Star },
   { name: "Settings", href: "/app/settings", icon: Settings },
