@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Settings, Building, Clock, MessageSquare, Users, Plug, ExternalLink, Repeat, Package, BarChart3 } from "lucide-react"
+import { Building, MessageSquare, Users, Plug, ArrowRight, Repeat, Package, BarChart3 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -19,50 +19,49 @@ export default async function SettingsPage() {
     return <div>Organization not found</div>
   }
 
-  // Ensure theme has a default value for backwards compatibility
   const orgWithDefaults = {
     ...organization,
     theme: organization.theme || "blue",
   }
 
   return (
-    <div className="p-4 lg:p-8 space-y-6">
+    <div className="p-4 lg:p-8 space-y-8 max-w-5xl mx-auto">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
+      <div className="space-y-1">
+        <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">
           Manage your business settings and preferences
         </p>
       </div>
 
-      <Tabs defaultValue="business" className="space-y-6">
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="business">
-            <Building className="h-4 w-4 mr-2" />
+      <Tabs defaultValue="business" className="space-y-8">
+        <TabsList className="flex-wrap h-auto gap-1 p-1.5 bg-muted/50">
+          <TabsTrigger value="business" className="gap-2">
+            <Building className="h-4 w-4" />
             Business
           </TabsTrigger>
-          <TabsTrigger value="recurring">
-            <Repeat className="h-4 w-4 mr-2" />
+          <TabsTrigger value="recurring" className="gap-2">
+            <Repeat className="h-4 w-4" />
             Recurring
           </TabsTrigger>
-          <TabsTrigger value="inventory">
-            <Package className="h-4 w-4 mr-2" />
+          <TabsTrigger value="inventory" className="gap-2">
+            <Package className="h-4 w-4" />
             Inventory
           </TabsTrigger>
-          <TabsTrigger value="reports">
-            <BarChart3 className="h-4 w-4 mr-2" />
+          <TabsTrigger value="reports" className="gap-2">
+            <BarChart3 className="h-4 w-4" />
             Reports
           </TabsTrigger>
-          <TabsTrigger value="integrations">
-            <Plug className="h-4 w-4 mr-2" />
+          <TabsTrigger value="integrations" className="gap-2">
+            <Plug className="h-4 w-4" />
             Integrations
           </TabsTrigger>
-          <TabsTrigger value="messages">
-            <MessageSquare className="h-4 w-4 mr-2" />
+          <TabsTrigger value="messages" className="gap-2">
+            <MessageSquare className="h-4 w-4" />
             Messages
           </TabsTrigger>
-          <TabsTrigger value="team">
-            <Users className="h-4 w-4 mr-2" />
+          <TabsTrigger value="team" className="gap-2">
+            <Users className="h-4 w-4" />
             Team
           </TabsTrigger>
         </TabsList>
@@ -72,25 +71,24 @@ export default async function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="recurring">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Repeat className="h-5 w-5" />
-                Recurring Schedules
-              </CardTitle>
-              <CardDescription>
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-gradient-to-br from-primary/5 to-transparent pb-8">
+              <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                <Repeat className="h-6 w-6 text-primary" />
+              </div>
+              <CardTitle>Recurring Schedules</CardTitle>
+              <CardDescription className="text-base">
                 Manage recurring appointments and automated scheduling
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
+            <CardContent className="pt-6">
+              <p className="text-muted-foreground mb-6">
                 Set up recurring appointments for regular clients. Automatically generate appointments based on schedules.
               </p>
               <Link href="/app/recurring">
-                <Button>
-                  <Repeat className="h-4 w-4 mr-2" />
+                <Button className="gap-2">
                   Manage Recurring Schedules
-                  <ExternalLink className="h-4 w-4 ml-2" />
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             </CardContent>
@@ -98,25 +96,24 @@ export default async function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="inventory">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Inventory Management
-              </CardTitle>
-              <CardDescription>
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-gradient-to-br from-emerald-50 to-transparent pb-8">
+              <div className="h-12 w-12 rounded-2xl bg-emerald-100 flex items-center justify-center mb-4">
+                <Package className="h-6 w-6 text-emerald-600" />
+              </div>
+              <CardTitle>Inventory Management</CardTitle>
+              <CardDescription className="text-base">
                 Track grooming supplies and stock levels
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
+            <CardContent className="pt-6">
+              <p className="text-muted-foreground mb-6">
                 Manage your inventory of shampoos, conditioners, and other grooming supplies. Get alerts when stock is low.
               </p>
               <Link href="/app/inventory">
-                <Button>
-                  <Package className="h-4 w-4 mr-2" />
+                <Button className="gap-2">
                   Manage Inventory
-                  <ExternalLink className="h-4 w-4 ml-2" />
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             </CardContent>
@@ -124,25 +121,24 @@ export default async function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="reports">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Reports & Analytics
-              </CardTitle>
-              <CardDescription>
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-gradient-to-br from-blue-50 to-transparent pb-8">
+              <div className="h-12 w-12 rounded-2xl bg-blue-100 flex items-center justify-center mb-4">
+                <BarChart3 className="h-6 w-6 text-blue-600" />
+              </div>
+              <CardTitle>Reports & Analytics</CardTitle>
+              <CardDescription className="text-base">
                 Business insights and performance metrics
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
+            <CardContent className="pt-6">
+              <p className="text-muted-foreground mb-6">
                 View revenue reports, appointment trends, popular services, and top clients to make data-driven decisions.
               </p>
               <Link href="/app/reports">
-                <Button>
-                  <BarChart3 className="h-4 w-4 mr-2" />
+                <Button className="gap-2">
                   View Reports
-                  <ExternalLink className="h-4 w-4 ml-2" />
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             </CardContent>
@@ -171,25 +167,24 @@ export default async function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="team">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Team Management
-              </CardTitle>
-              <CardDescription>
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-gradient-to-br from-amber-50 to-transparent pb-8">
+              <div className="h-12 w-12 rounded-2xl bg-amber-100 flex items-center justify-center mb-4">
+                <Users className="h-6 w-6 text-amber-600" />
+              </div>
+              <CardTitle>Team Management</CardTitle>
+              <CardDescription className="text-base">
                 Manage your staff members, schedules, and time off
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
+            <CardContent className="pt-6">
+              <p className="text-muted-foreground mb-6">
                 Add and manage groomers, set their working schedules, and track time off requests.
               </p>
               <Link href="/app/staff">
-                <Button>
-                  <Users className="h-4 w-4 mr-2" />
+                <Button className="gap-2">
                   Manage Staff
-                  <ExternalLink className="h-4 w-4 ml-2" />
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             </CardContent>

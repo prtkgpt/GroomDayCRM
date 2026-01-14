@@ -15,8 +15,8 @@ export function AppShell({ children, orgName }: AppShellProps) {
   return (
     <>
       <Sidebar orgName={orgName} onNewBooking={() => setBookingModalOpen(true)} />
-      <main className="lg:pl-64">
-        <div className="pt-16 lg:pt-0">
+      <main className="lg:pl-60">
+        <div className="pt-14 lg:pt-0">
           {children}
         </div>
       </main>
