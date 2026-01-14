@@ -31,6 +31,7 @@ model Organization {
   twilioAccountSid    String?
   twilioAuthToken     String?
   twilioPhoneNumber   String?
+  resendApiKey        String?  // Optional override for org-specific email sending
 
   // Social & Review links
   googleReviewUrl     String?
@@ -47,6 +48,8 @@ model Organization {
   appointments    Appointment[]
   messageTemplates MessageTemplate[]
   messageLogs     MessageLog[]
+  feedbacks       Feedback[]
+  feedbackRequests FeedbackRequest[]
 }
 
 // User account (linked to Clerk)
@@ -93,6 +96,8 @@ model Client {
   pets            Pet[]
   appointments    Appointment[]
   sessions        CustomerSession[]
+  feedbacks       Feedback[]
+  feedbackRequests FeedbackRequest[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -213,6 +218,8 @@ model Appointment {
   appointmentServices AppointmentService[]
   payment         Payment?
   messageLogs     MessageLog[]
+  feedbacks       Feedback[]
+  feedbackRequests FeedbackRequest[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -410,4 +417,57 @@ model CustomerSession {
   @@index([clientId])
   @@index([token])
   @@index([sessionToken])
+}
+
+// Customer feedback/reviews
+model Feedback {
+  id              String   @id @default(cuid())
+
+  rating          Int      // 1-5 stars
+  comment         String?  // Optional text feedback
+
+  // Visibility
+  isPublic        Boolean  @default(false) // Show on landing page?
+  isApproved      Boolean  @default(false) // Owner approved for display?
+
+  // Links
+  appointmentId   String?
+  appointment     Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([clientId])
+  @@index([appointmentId])
+}
+
+// Feedback request tokens (for email links)
+model FeedbackRequest {
+  id              String   @id @default(cuid())
+
+  token           String   @unique
+  expiresAt       DateTime
+  usedAt          DateTime? // When feedback was submitted
+
+  appointmentId   String
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+
+  @@index([token])
+  @@index([organizationId])
+  @@index([appointmentId])
 }

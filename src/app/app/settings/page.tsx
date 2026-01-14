@@ -65,6 +65,7 @@ export default async function SettingsPage() {
               twilioAccountSid: integrations?.twilioAccountSid || null,
               twilioAuthToken: integrations?.twilioAuthToken || null,
               twilioPhoneNumber: integrations?.twilioPhoneNumber || null,
+              resendApiKey: integrations?.resendApiKey || null,
               googleReviewUrl: integrations?.googleReviewUrl || null,
               yelpUrl: integrations?.yelpUrl || null,
               facebookUrl: integrations?.facebookUrl || null,

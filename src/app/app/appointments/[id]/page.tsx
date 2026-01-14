@@ -31,6 +31,7 @@ import {
 import { AppointmentActions } from "./appointment-actions"
 import { PaymentSection } from "./payment-section"
 import { MessageSection } from "./message-section"
+import { FeedbackSection } from "./feedback-section"
 
 export default async function AppointmentDetailPage({
   params,
@@ -164,6 +165,9 @@ export default async function AppointmentDetailPage({
 
           {/* Messages */}
           <MessageSection appointment={appointment} />
+
+          {/* Feedback (only shown for completed appointments) */}
+          <FeedbackSection appointment={appointment} />
         </div>
 
         {/* Sidebar */}

@@ -8,6 +8,7 @@ import {
   Calendar,
   Users,
   Scissors,
+  Star,
   Settings,
   Menu,
   X,
@@ -22,6 +23,7 @@ const navigation = [
   { name: "Calendar", href: "/app/calendar", icon: Calendar },
   { name: "Clients", href: "/app/clients", icon: Users },
   { name: "Services", href: "/app/services", icon: Scissors },
+  { name: "Reviews", href: "/app/reviews", icon: Star },
   { name: "Settings", href: "/app/settings", icon: Settings },
 ]
 

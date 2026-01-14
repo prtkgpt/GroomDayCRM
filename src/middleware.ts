@@ -9,6 +9,7 @@ const isPublicRoute = createRouteMatcher([
   "/:slug/book",      // Public booking pages
   "/:slug/portal",    // Customer portal login
   "/:slug/portal/(.*)", // Customer portal pages (has own auth)
+  "/:slug/feedback",  // Public feedback submission
 ])
 
 export default clerkMiddleware(async (auth, req) => {

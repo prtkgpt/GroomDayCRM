@@ -109,6 +109,9 @@ export const integrationsSchema = z.object({
   twilioAuthToken: z.string().optional().or(z.literal("")),
   twilioPhoneNumber: z.string().optional().or(z.literal("")),
 
+  // Resend email (optional override)
+  resendApiKey: z.string().optional().or(z.literal("")),
+
   // Social & Review links
   googleReviewUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
   yelpUrl: z.string().url("Invalid URL").optional().or(z.literal("")),

@@ -65,6 +65,14 @@ export async function getAppointment(id: string) {
       messageLogs: {
         orderBy: { sentAt: "desc" },
       },
+      feedbacks: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+      feedbackRequests: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
     },
   })
 

@@ -8,6 +8,7 @@ import {
   Loader2,
   CreditCard,
   MessageSquare,
+  Mail,
   Star,
   Eye,
   EyeOff,
@@ -28,6 +29,7 @@ interface IntegrationsSettingsProps {
     twilioAccountSid: string | null
     twilioAuthToken: string | null
     twilioPhoneNumber: string | null
+    resendApiKey: string | null
     googleReviewUrl: string | null
     yelpUrl: string | null
     facebookUrl: string | null
@@ -46,6 +48,7 @@ export function IntegrationsSettings({ integrations }: IntegrationsSettingsProps
   const [isPending, startTransition] = useTransition()
   const [showStripeSecret, setShowStripeSecret] = useState(false)
   const [showTwilioAuth, setShowTwilioAuth] = useState(false)
+  const [showResendKey, setShowResendKey] = useState(false)
 
   const form = useForm<IntegrationsFormData>({
     resolver: zodResolver(integrationsSchema),
@@ -55,6 +58,7 @@ export function IntegrationsSettings({ integrations }: IntegrationsSettingsProps
       twilioAccountSid: integrations.twilioAccountSid || "",
       twilioAuthToken: integrations.twilioAuthToken || "",
       twilioPhoneNumber: integrations.twilioPhoneNumber || "",
+      resendApiKey: integrations.resendApiKey || "",
       googleReviewUrl: integrations.googleReviewUrl || "",
       yelpUrl: integrations.yelpUrl || "",
       facebookUrl: integrations.facebookUrl || "",
@@ -196,6 +200,56 @@ export function IntegrationsSettings({ integrations }: IntegrationsSettingsProps
             />
             <p className="text-xs text-muted-foreground mt-1">
               The phone number purchased from Twilio to send SMS from
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Resend Email */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Resend Email
+          </CardTitle>
+          <CardDescription>
+            Use your own Resend API key for sending emails. If not provided, emails will be sent from the platform.{" "}
+            <a
+              href="https://resend.com/api-keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline inline-flex items-center gap-1"
+            >
+              Get your API key <ExternalLink className="h-3 w-3" />
+            </a>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div>
+            <Label htmlFor="resendApiKey">API Key (Optional)</Label>
+            <div className="relative">
+              <Input
+                id="resendApiKey"
+                type={showResendKey ? "text" : "password"}
+                {...form.register("resendApiKey")}
+                placeholder="re_..."
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7"
+                onClick={() => setShowResendKey(!showResendKey)}
+              >
+                {showResendKey ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Leave blank to use platform email sending. Add your own key to send emails from your domain.
             </p>
           </div>
         </CardContent>

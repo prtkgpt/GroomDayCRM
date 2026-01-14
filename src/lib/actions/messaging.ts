@@ -1,13 +1,9 @@
 "use server"
 
-import { Resend } from "resend"
 import { db } from "@/lib/db"
 import { requireOrganizationId } from "@/lib/auth"
 import { revalidatePath } from "next/cache"
-
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null
+import { sendEmail } from "@/lib/email"
 
 interface TemplateVariables {
   clientName: string
@@ -90,29 +86,16 @@ export async function sendAppointmentEmail(
   const subject = replaceTemplateVariables(template.subject || "", variables)
   const body = replaceTemplateVariables(template.body, variables)
 
-  // Send email via Resend
-  let providerId: string | null = null
-  let status: "SENT" | "FAILED" = "SENT"
+  // Send email via centralized email service (uses org's Resend key if available)
+  const emailResult = await sendEmail({
+    organizationId,
+    to: appointment.client.email,
+    subject: subject || `Message from ${appointment.organization.name}`,
+    text: body,
+  })
 
-  if (resend) {
-    try {
-      const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev"
-      const result = await resend.emails.send({
-        from: `${appointment.organization.name} <${fromEmail}>`,
-        to: appointment.client.email,
-        subject: subject || `Message from ${appointment.organization.name}`,
-        text: body,
-      })
-      providerId = result.data?.id || null
-    } catch (error) {
-      console.error("Failed to send email:", error)
-      status = "FAILED"
-    }
-  } else {
-    console.log("Resend not configured, email would be sent to:", appointment.client.email)
-    console.log("Subject:", subject)
-    console.log("Body:", body)
-  }
+  const providerId = emailResult.id || null
+  const status: "SENT" | "FAILED" = emailResult.success ? "SENT" : "FAILED"
 
   // Log the message
   const messageLog = await db.messageLog.create({

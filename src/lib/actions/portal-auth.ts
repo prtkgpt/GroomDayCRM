@@ -2,9 +2,8 @@
 
 import { cookies } from "next/headers"
 import { db } from "@/lib/db"
-import { Resend } from "resend"
+import { getResendClientBySlug, getFromEmail } from "@/lib/email"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const PORTAL_SESSION_COOKIE = "portal_session"
 
 // Generate a random token
@@ -16,15 +15,19 @@ function generateToken(): string {
 
 // Request magic link - send email with login link
 export async function requestMagicLink(email: string, slug: string) {
-  // Find the organization by slug
-  const organization = await db.organization.findUnique({
-    where: { slug },
-    select: { id: true, name: true },
-  })
+  // Get organization and Resend client (uses org's key if available)
+  const { resend, organization } = await getResendClientBySlug(slug)
 
   if (!organization) {
     return { success: false, error: "Business not found" }
   }
+
+  // Check if org has custom Resend key
+  const orgData = await db.organization.findUnique({
+    where: { slug },
+    select: { id: true, resendApiKey: true },
+  })
+  const hasCustomKey = !!orgData?.resendApiKey
 
   // Find client by email in this organization
   const client = await db.client.findFirst({
@@ -58,9 +61,15 @@ export async function requestMagicLink(email: string, slug: string) {
   const magicLink = `${baseUrl}/${slug}/portal/verify?token=${token}`
 
   // Send email with magic link
+  if (!resend) {
+    console.log("Resend not configured, magic link:", magicLink)
+    return { success: true }
+  }
+
   try {
+    const from = getFromEmail(organization.name, hasCustomKey)
     await resend.emails.send({
-      from: "GroomDayCRM <noreply@groomdaycrm.com>",
+      from,
       to: email,
       subject: `Your login link for ${organization.name}`,
       html: `
