@@ -1,4 +1,5 @@
-import { Settings, Building, Clock, MessageSquare, Users, Plug } from "lucide-react"
+import Link from "next/link"
+import { Settings, Building, Clock, MessageSquare, Users, Plug, ExternalLink } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getOrganization, getMessageTemplates, getIntegrations } from "@/lib/actions/organization"
@@ -47,9 +48,9 @@ export default async function SettingsPage() {
             <MessageSquare className="h-4 w-4 mr-2" />
             Messages
           </TabsTrigger>
-          <TabsTrigger value="team" disabled>
+          <TabsTrigger value="team">
             <Users className="h-4 w-4 mr-2" />
-            Team (Coming Soon)
+            Team
           </TabsTrigger>
         </TabsList>
 
@@ -83,13 +84,20 @@ export default async function SettingsPage() {
             <CardHeader>
               <CardTitle>Team Management</CardTitle>
               <CardDescription>
-                Invite staff members and manage permissions
+                Manage your staff members, schedules, and time off
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-center py-8">
-                Team management is coming in a future update.
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Staff management has moved to its own dedicated section for easier access.
               </p>
+              <Link href="/app/staff">
+                <button className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                  <Users className="h-4 w-4 mr-2" />
+                  Go to Staff Management
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </button>
+              </Link>
             </CardContent>
           </Card>
         </TabsContent>
