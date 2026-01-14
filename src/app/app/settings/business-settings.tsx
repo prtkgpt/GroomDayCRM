@@ -4,12 +4,13 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader2, ExternalLink, Copy, Check, Palette } from "lucide-react"
+import { Loader2, ExternalLink, Copy, Check, Palette, Globe } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import {
   Select,
   SelectContent,
@@ -40,6 +41,10 @@ interface BusinessSettingsProps {
     businessHoursStart: string
     businessHoursEnd: string
     appointmentBuffer: number
+    bookingEnabled?: boolean
+    bookingLeadTime?: number
+    bookingMaxDaysAhead?: number
+    bookingRequiresApproval?: boolean
   }
 }
 
@@ -79,6 +84,10 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
       businessHoursStart: organization.businessHoursStart,
       businessHoursEnd: organization.businessHoursEnd,
       appointmentBuffer: organization.appointmentBuffer,
+      bookingEnabled: organization.bookingEnabled ?? true,
+      bookingLeadTime: organization.bookingLeadTime ?? 2,
+      bookingMaxDaysAhead: organization.bookingMaxDaysAhead ?? 60,
+      bookingRequiresApproval: organization.bookingRequiresApproval ?? false,
     },
   })
 
@@ -112,16 +121,27 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
       {/* Online Booking */}
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader>
-          <CardTitle>Online Booking</CardTitle>
-          <CardDescription>
-            Allow customers to book appointments online
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                Online Booking
+              </CardTitle>
+              <CardDescription>
+                Allow customers to book appointments online
+              </CardDescription>
+            </div>
+            <Switch
+              checked={form.watch("bookingEnabled")}
+              onCheckedChange={(checked) => form.setValue("bookingEnabled", checked)}
+            />
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <Label htmlFor="slug">Your Business URL *</Label>
             <div className="flex gap-2 mt-1">
-              <div className="flex-1 flex items-center bg-muted rounded-md px-3 text-sm">
+              <div className="flex-1 flex items-center bg-muted rounded-xl px-3 text-sm">
                 <span className="text-muted-foreground">groomdaycrm.com/</span>
                 <Input
                   id="slug"
@@ -138,7 +158,7 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center gap-2 p-3 bg-background rounded-lg border">
+            <div className="flex items-center gap-2 p-3 bg-background rounded-xl border">
               <div className="flex-1">
                 <p className="text-xs text-muted-foreground mb-1">Landing Page</p>
                 <span className="text-sm truncate block">{landingUrl}</span>
@@ -149,7 +169,7 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
                 </a>
               </Button>
             </div>
-            <div className="flex items-center gap-2 p-3 bg-background rounded-lg border">
+            <div className="flex items-center gap-2 p-3 bg-background rounded-xl border">
               <div className="flex-1">
                 <p className="text-xs text-muted-foreground mb-1">Booking Page</p>
                 <span className="text-sm truncate block">{bookingUrl}</span>
@@ -162,6 +182,50 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
                   <ExternalLink className="h-4 w-4" />
                 </a>
               </Button>
+            </div>
+          </div>
+
+          {/* Booking Settings */}
+          <div className="pt-4 border-t space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="bookingLeadTime">Minimum Lead Time (hours)</Label>
+                <Input
+                  id="bookingLeadTime"
+                  type="number"
+                  min={0}
+                  {...form.register("bookingLeadTime")}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  How far in advance customers must book
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="bookingMaxDaysAhead">Max Days Ahead</Label>
+                <Input
+                  id="bookingMaxDaysAhead"
+                  type="number"
+                  min={1}
+                  max={365}
+                  {...form.register("bookingMaxDaysAhead")}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  How far in advance customers can book
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-background rounded-xl border">
+              <div>
+                <p className="font-medium text-sm">Require Approval</p>
+                <p className="text-xs text-muted-foreground">
+                  Manually approve each online booking
+                </p>
+              </div>
+              <Switch
+                checked={form.watch("bookingRequiresApproval")}
+                onCheckedChange={(checked) => form.setValue("bookingRequiresApproval", checked)}
+              />
             </div>
           </div>
         </CardContent>

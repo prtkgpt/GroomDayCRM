@@ -14,6 +14,7 @@ model Organization {
   slug            String   @unique // URL-friendly identifier for public booking
   description     String?  // Business description for landing page
   theme           String   @default("blue") // Theme color for public pages
+  logoUrl         String?  // Business logo for booking page
   email           String?
   phone           String?
   address         String?
@@ -24,6 +25,12 @@ model Organization {
   businessHoursStart String @default("09:00")
   businessHoursEnd   String @default("17:00")
   appointmentBuffer  Int    @default(15) // minutes between appointments
+
+  // Online booking settings
+  bookingEnabled     Boolean @default(true)
+  bookingLeadTime    Int     @default(2)   // minimum hours before appointment
+  bookingMaxDaysAhead Int    @default(60)  // how far in advance can book
+  bookingRequiresApproval Boolean @default(false) // require manual approval
 
   // Integration API keys (stored encrypted in production)
   stripeSecretKey     String?

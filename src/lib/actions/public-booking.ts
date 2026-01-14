@@ -1,277 +1,383 @@
 "use server"
 
 import { db } from "@/lib/db"
-import { revalidatePath } from "next/cache"
-import { Resend } from "resend"
+import { addDays, addHours, format, parse, setHours, setMinutes, startOfDay, isBefore, isAfter, addMinutes } from "date-fns"
 
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null
-
+// Get organization by slug for public booking page
 export async function getOrganizationBySlug(slug: string) {
-  const organization = await db.organization.findUnique({
+  return db.organization.findUnique({
     where: { slug },
-    include: {
-      services: {
-        where: { isActive: true, isAddOn: false },
-        orderBy: { sortOrder: "asc" },
-      },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      theme: true,
+      logoUrl: true,
+      email: true,
+      phone: true,
+      address: true,
+      city: true,
+      state: true,
+      zipCode: true,
+      timezone: true,
+      businessHoursStart: true,
+      businessHoursEnd: true,
+      appointmentBuffer: true,
+      bookingEnabled: true,
+      bookingLeadTime: true,
+      bookingMaxDaysAhead: true,
+      bookingRequiresApproval: true,
+    },
+  })
+}
+
+// Get active services for the organization
+export async function getPublicServices(organizationId: string) {
+  return db.service.findMany({
+    where: {
+      organizationId,
+      isActive: true,
+    },
+    orderBy: [
+      { isAddOn: "asc" },
+      { sortOrder: "asc" },
+      { name: "asc" },
+    ],
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      defaultPrice: true,
+      defaultDuration: true,
+      isAddOn: true,
+    },
+  })
+}
+
+// Get available time slots for a given date
+export async function getAvailableSlots(
+  organizationId: string,
+  date: Date,
+  duration: number // total duration in minutes
+) {
+  const org = await db.organization.findUnique({
+    where: { id: organizationId },
+    select: {
+      businessHoursStart: true,
+      businessHoursEnd: true,
+      appointmentBuffer: true,
+      bookingLeadTime: true,
     },
   })
 
-  return organization
-}
+  if (!org) return []
 
-export async function getAvailableSlots(
-  organizationId: string,
-  date: string,
-  duration: number
-) {
-  const organization = await db.organization.findUnique({
-    where: { id: organizationId },
-  })
+  const dayStart = startOfDay(date)
+  const dayEnd = addDays(dayStart, 1)
 
-  if (!organization) {
-    throw new Error("Organization not found")
-  }
-
-  const selectedDate = new Date(date)
-  const dayStart = new Date(selectedDate)
-  dayStart.setHours(0, 0, 0, 0)
-  const dayEnd = new Date(selectedDate)
-  dayEnd.setHours(23, 59, 59, 999)
-
-  // Get existing appointments for the day
+  // Get existing appointments for this day
   const existingAppointments = await db.appointment.findMany({
     where: {
       organizationId,
       dateTime: {
         gte: dayStart,
-        lte: dayEnd,
+        lt: dayEnd,
       },
       status: {
         notIn: ["CANCELED", "NO_SHOW"],
       },
     },
+    select: {
+      dateTime: true,
+      duration: true,
+    },
     orderBy: { dateTime: "asc" },
   })
 
   // Parse business hours
-  const [startHour, startMin] = organization.businessHoursStart.split(":").map(Number)
-  const [endHour, endMin] = organization.businessHoursEnd.split(":").map(Number)
-  const buffer = organization.appointmentBuffer
+  const [startHour, startMin] = org.businessHoursStart.split(":").map(Number)
+  const [endHour, endMin] = org.businessHoursEnd.split(":").map(Number)
 
-  // Generate available slots
-  const slots: string[] = []
-  const slotDate = new Date(selectedDate)
-  slotDate.setHours(startHour, startMin, 0, 0)
+  const businessStart = setMinutes(setHours(dayStart, startHour), startMin)
+  const businessEnd = setMinutes(setHours(dayStart, endHour), endMin)
 
-  const endTime = new Date(selectedDate)
-  endTime.setHours(endHour, endMin, 0, 0)
+  // Calculate minimum booking time (current time + lead time)
+  const minBookingTime = addHours(new Date(), org.bookingLeadTime)
 
-  while (slotDate < endTime) {
-    const slotEnd = new Date(slotDate.getTime() + duration * 60000)
+  // Generate all possible slots (every 30 minutes)
+  const slots: { time: string; available: boolean }[] = []
+  let currentSlot = businessStart
+
+  while (isBefore(currentSlot, businessEnd)) {
+    // Check if slot end time is within business hours
+    const slotEnd = addMinutes(currentSlot, duration + org.appointmentBuffer)
+
+    if (isAfter(slotEnd, businessEnd)) {
+      break
+    }
+
+    // Check if slot is in the past or before lead time
+    const isPastLeadTime = isAfter(currentSlot, minBookingTime)
 
     // Check if slot conflicts with existing appointments
-    const hasConflict = existingAppointments.some((apt) => {
-      const aptStart = new Date(apt.dateTime)
-      const aptEnd = new Date(aptStart.getTime() + apt.duration * 60000 + buffer * 60000)
-      const slotStartWithBuffer = new Date(slotDate.getTime() - buffer * 60000)
+    const hasConflict = existingAppointments.some((appt) => {
+      const apptStart = new Date(appt.dateTime)
+      const apptEnd = addMinutes(apptStart, appt.duration + org.appointmentBuffer)
 
+      // Check for overlap
       return (
-        (slotStartWithBuffer < aptEnd && slotEnd > aptStart)
+        (isBefore(currentSlot, apptEnd) && isAfter(addMinutes(currentSlot, duration), apptStart))
       )
     })
 
-    if (!hasConflict && slotEnd <= endTime) {
-      slots.push(slotDate.toISOString())
-    }
+    slots.push({
+      time: format(currentSlot, "HH:mm"),
+      available: isPastLeadTime && !hasConflict,
+    })
 
     // Move to next slot (30-minute intervals)
-    slotDate.setMinutes(slotDate.getMinutes() + 30)
+    currentSlot = addMinutes(currentSlot, 30)
   }
 
   return slots
 }
 
-export async function createPublicBooking(data: {
-  organizationId: string
-  // Client info
-  firstName: string
-  lastName: string
-  email: string
-  phone?: string
-  address?: string
-  // Pet info
-  petName: string
-  species: string
-  breed?: string
-  weight?: number
-  notes?: string
-  // Appointment info
-  serviceId: string
-  dateTime: string
-  locationNotes?: string
-}) {
-  const organization = await db.organization.findUnique({
-    where: { id: data.organizationId },
-  })
-
-  if (!organization) {
-    throw new Error("Organization not found")
+// Find or create a client
+async function findOrCreateClient(
+  organizationId: string,
+  data: {
+    firstName: string
+    lastName: string
+    email: string
+    phone: string
   }
-
-  const service = await db.service.findFirst({
-    where: { id: data.serviceId, organizationId: data.organizationId },
-  })
-
-  if (!service) {
-    throw new Error("Service not found")
-  }
-
-  // Check if client already exists by email
+) {
+  // Try to find existing client by email or phone
   let client = await db.client.findFirst({
     where: {
-      email: data.email,
-      organizationId: data.organizationId,
+      organizationId,
+      OR: [
+        { email: data.email },
+        { phone: data.phone },
+      ],
+    },
+    include: {
+      pets: true,
     },
   })
 
-  if (!client) {
-    // Create new client
-    client = await db.client.create({
+  if (client) {
+    // Update client info if needed
+    client = await db.client.update({
+      where: { id: client.id },
       data: {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
         phone: data.phone,
-        address: data.address,
-        organizationId: data.organizationId,
+      },
+      include: {
+        pets: true,
+      },
+    })
+  } else {
+    // Create new client
+    client = await db.client.create({
+      data: {
+        organizationId,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+      },
+      include: {
+        pets: true,
       },
     })
   }
 
-  // Check if pet already exists for this client
-  let pet = await db.pet.findFirst({
-    where: {
-      name: data.petName,
-      clientId: client.id,
-    },
-  })
+  return client
+}
 
-  if (!pet) {
-    // Create new pet
-    pet = await db.pet.create({
+// Create or update a pet
+async function createOrUpdatePet(
+  clientId: string,
+  data: {
+    id?: string
+    name: string
+    species: string
+    breed?: string
+    weight?: number
+    notes?: string
+  }
+) {
+  if (data.id) {
+    // Update existing pet
+    return db.pet.update({
+      where: { id: data.id },
       data: {
-        name: data.petName,
+        name: data.name,
         species: data.species,
         breed: data.breed,
         weight: data.weight,
-        clientId: client.id,
+        behaviorNotes: data.notes,
+      },
+    })
+  } else {
+    // Create new pet
+    return db.pet.create({
+      data: {
+        clientId,
+        name: data.name,
+        species: data.species,
+        breed: data.breed,
+        weight: data.weight,
+        behaviorNotes: data.notes,
       },
     })
   }
+}
 
-  // Create appointment with PENDING status for approval
-  const appointment = await db.appointment.create({
-    data: {
-      dateTime: new Date(data.dateTime),
-      duration: service.defaultDuration,
-      status: "PENDING",
-      locationType: "CLIENT_HOME",
-      locationAddress: data.address,
-      locationNotes: data.locationNotes,
-      notes: data.notes,
-      subtotal: service.defaultPrice,
-      totalAmount: service.defaultPrice,
-      clientId: client.id,
-      organizationId: data.organizationId,
-      appointmentPets: {
-        create: {
-          petId: pet.id,
-        },
-      },
-      appointmentServices: {
-        create: {
-          serviceId: service.id,
-          price: service.defaultPrice,
-          duration: service.defaultDuration,
-        },
-      },
-    },
-    include: {
-      client: true,
-      appointmentPets: { include: { pet: true } },
-      appointmentServices: { include: { service: true } },
+// Submit a booking
+export async function submitBooking(data: {
+  organizationId: string
+  services: string[] // service IDs
+  date: string // YYYY-MM-DD
+  time: string // HH:mm
+  client: {
+    firstName: string
+    lastName: string
+    email: string
+    phone: string
+  }
+  pet: {
+    id?: string
+    name: string
+    species: string
+    breed?: string
+    weight?: number
+    notes?: string
+  }
+  notes?: string
+}) {
+  const org = await db.organization.findUnique({
+    where: { id: data.organizationId },
+    select: {
+      bookingRequiresApproval: true,
     },
   })
 
-  // Send notification email to organization
-  if (resend && organization.email) {
-    const appointmentDate = new Date(data.dateTime).toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
+  if (!org) {
+    return { success: false, error: "Organization not found" }
+  }
+
+  // Get services
+  const services = await db.service.findMany({
+    where: {
+      id: { in: data.services },
+      organizationId: data.organizationId,
+    },
+  })
+
+  if (services.length === 0) {
+    return { success: false, error: "No valid services selected" }
+  }
+
+  // Calculate totals
+  const totalDuration = services.reduce((sum, s) => sum + s.defaultDuration, 0)
+  const subtotal = services.reduce((sum, s) => sum + s.defaultPrice, 0)
+
+  // Parse date and time
+  const dateTime = parse(
+    `${data.date} ${data.time}`,
+    "yyyy-MM-dd HH:mm",
+    new Date()
+  )
+
+  try {
+    // Find or create client
+    const client = await findOrCreateClient(data.organizationId, data.client)
+
+    // Create or update pet
+    const pet = await createOrUpdatePet(client.id, data.pet)
+
+    // Create appointment
+    const appointment = await db.appointment.create({
+      data: {
+        organizationId: data.organizationId,
+        clientId: client.id,
+        dateTime,
+        duration: totalDuration,
+        status: org.bookingRequiresApproval ? "PENDING" : "SCHEDULED",
+        notes: data.notes,
+        subtotal,
+        totalAmount: subtotal,
+        appointmentPets: {
+          create: {
+            petId: pet.id,
+          },
+        },
+        appointmentServices: {
+          create: services.map((s) => ({
+            serviceId: s.id,
+            price: s.defaultPrice,
+            duration: s.defaultDuration,
+          })),
+        },
+      },
+      include: {
+        client: true,
+        appointmentPets: {
+          include: { pet: true },
+        },
+        appointmentServices: {
+          include: { service: true },
+        },
+      },
     })
-    const appointmentTime = new Date(data.dateTime).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    })
-    const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev"
 
-    try {
-      await resend.emails.send({
-        from: fromEmail,
-        to: organization.email,
-        subject: `New Booking Request - ${client.firstName} ${client.lastName}`,
-        html: `
-          <h2>New Online Booking Request</h2>
-          <p>You have a new booking request that needs your approval:</p>
-
-          <h3>Customer Details</h3>
-          <p><strong>Name:</strong> ${client.firstName} ${client.lastName}</p>
-          <p><strong>Email:</strong> ${client.email}</p>
-          ${client.phone ? `<p><strong>Phone:</strong> ${client.phone}</p>` : ""}
-          ${data.address ? `<p><strong>Address:</strong> ${data.address}</p>` : ""}
-
-          <h3>Pet Details</h3>
-          <p><strong>Name:</strong> ${pet.name}</p>
-          <p><strong>Species:</strong> ${pet.species}</p>
-          ${pet.breed ? `<p><strong>Breed:</strong> ${pet.breed}</p>` : ""}
-
-          <h3>Appointment Details</h3>
-          <p><strong>Service:</strong> ${service.name}</p>
-          <p><strong>Date:</strong> ${appointmentDate}</p>
-          <p><strong>Time:</strong> ${appointmentTime}</p>
-          <p><strong>Duration:</strong> ${service.defaultDuration} minutes</p>
-          <p><strong>Price:</strong> $${service.defaultPrice.toFixed(2)}</p>
-          ${data.notes ? `<p><strong>Notes:</strong> ${data.notes}</p>` : ""}
-
-          <p style="margin-top: 20px;">
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://groomdaycrm.com"}/app/appointments"
-               style="background-color: #0066cc; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-              Review & Approve
-            </a>
-          </p>
-        `,
-      })
-    } catch (error) {
-      console.error("Failed to send booking notification:", error)
+    return {
+      success: true,
+      appointmentId: appointment.id,
+      status: appointment.status,
+      dateTime: appointment.dateTime.toISOString(),
     }
+  } catch (error) {
+    console.error("Error creating booking:", error)
+    return { success: false, error: "Failed to create booking" }
   }
+}
 
-  revalidatePath("/app/calendar")
-  revalidatePath("/app/appointments")
-  revalidatePath("/app")
+// Get client's pets by email or phone (for returning customers)
+export async function getClientPets(
+  organizationId: string,
+  email?: string,
+  phone?: string
+) {
+  if (!email && !phone) return []
 
-  return {
-    success: true,
-    appointmentId: appointment.id,
-    clientName: `${client.firstName} ${client.lastName}`,
-    petName: pet.name,
-    dateTime: appointment.dateTime,
-    serviceName: service.name,
-    status: "pending",
-  }
+  const client = await db.client.findFirst({
+    where: {
+      organizationId,
+      OR: [
+        email ? { email } : {},
+        phone ? { phone } : {},
+      ].filter((c) => Object.keys(c).length > 0),
+    },
+    include: {
+      pets: {
+        select: {
+          id: true,
+          name: true,
+          species: true,
+          breed: true,
+          weight: true,
+          behaviorNotes: true,
+        },
+      },
+    },
+  })
+
+  return client?.pets || []
 }

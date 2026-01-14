@@ -86,6 +86,11 @@ export const organizationSchema = z.object({
   businessHoursStart: z.string().default("09:00"),
   businessHoursEnd: z.string().default("17:00"),
   appointmentBuffer: z.coerce.number().nonnegative().default(15),
+  // Online booking settings
+  bookingEnabled: z.boolean().default(true),
+  bookingLeadTime: z.coerce.number().nonnegative().default(2),
+  bookingMaxDaysAhead: z.coerce.number().positive().default(60),
+  bookingRequiresApproval: z.boolean().default(false),
 })
 
 export type OrganizationFormData = z.infer<typeof organizationSchema>

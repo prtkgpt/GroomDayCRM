@@ -56,6 +56,10 @@ export async function updateOrganization(data: OrganizationFormData) {
       businessHoursStart: validated.businessHoursStart,
       businessHoursEnd: validated.businessHoursEnd,
       appointmentBuffer: validated.appointmentBuffer,
+      bookingEnabled: validated.bookingEnabled,
+      bookingLeadTime: validated.bookingLeadTime,
+      bookingMaxDaysAhead: validated.bookingMaxDaysAhead,
+      bookingRequiresApproval: validated.bookingRequiresApproval,
     },
   })
 
