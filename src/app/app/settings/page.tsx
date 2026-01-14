@@ -1,18 +1,22 @@
 import Link from "next/link"
-import { Building, MessageSquare, Users, Plug, ArrowRight, Repeat, Package, BarChart3 } from "lucide-react"
+import { Building, MessageSquare, Users, Plug, ArrowRight, Repeat, Package, BarChart3, FileText } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { getOrganization, getMessageTemplates, getIntegrations } from "@/lib/actions/organization"
+import { getWaiverTemplates, getGroomingNoteTemplates } from "@/lib/actions/documents"
 import { BusinessSettings } from "./business-settings"
 import { MessageTemplates } from "./message-templates"
 import { IntegrationsSettings } from "./integrations-settings"
+import { DocumentsSettings } from "./documents-settings"
 
 export default async function SettingsPage() {
-  const [organization, templates, integrations] = await Promise.all([
+  const [organization, templates, integrations, waiverTemplates, groomingNoteTemplates] = await Promise.all([
     getOrganization(),
     getMessageTemplates(),
     getIntegrations(),
+    getWaiverTemplates(),
+    getGroomingNoteTemplates(),
   ])
 
   if (!organization) {
@@ -51,6 +55,10 @@ export default async function SettingsPage() {
           <TabsTrigger value="reports" className="gap-2">
             <BarChart3 className="h-4 w-4" />
             Reports
+          </TabsTrigger>
+          <TabsTrigger value="documents" className="gap-2">
+            <FileText className="h-4 w-4" />
+            Documents
           </TabsTrigger>
           <TabsTrigger value="integrations" className="gap-2">
             <Plug className="h-4 w-4" />
@@ -143,6 +151,13 @@ export default async function SettingsPage() {
               </Link>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="documents">
+          <DocumentsSettings
+            waiverTemplates={waiverTemplates}
+            groomingNoteTemplates={groomingNoteTemplates}
+          />
         </TabsContent>
 
         <TabsContent value="integrations">

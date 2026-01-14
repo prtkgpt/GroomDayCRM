@@ -60,6 +60,9 @@ model Organization {
   recurringSchedules RecurringSchedule[]
   inventoryItems  InventoryItem[]
   staff           Staff[]
+  waiverTemplates WaiverTemplate[]
+  groomingNoteTemplates GroomingNoteTemplate[]
+  invoices        Invoice[]
 }
 
 // User account (linked to Clerk)
@@ -112,6 +115,8 @@ model Client {
   feedbacks       Feedback[]
   feedbackRequests FeedbackRequest[]
   recurringSchedules RecurringSchedule[]
+  waivers         ClientWaiver[]
+  invoices        Invoice[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -147,6 +152,7 @@ model Pet {
   appointmentPets AppointmentPet[]
   vaccinations    VaccinationRecord[]
   recurringSchedulePets RecurringSchedulePet[]
+  groomingNotes   GroomingNote[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -245,6 +251,8 @@ model Appointment {
   feedbacks       Feedback[]
   feedbackRequests FeedbackRequest[]
   inventoryUsage  InventoryUsage[]
+  groomingNotes   GroomingNote[]
+  invoice         Invoice?
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -760,4 +768,189 @@ model StaffTimeOff {
 
   @@index([staffId])
   @@index([startDate, endDate])
+}
+
+// ============================================
+// DOCUMENTS & RECORDS
+// ============================================
+
+// Waiver template (liability, photo release, etc.)
+model WaiverTemplate {
+  id              String   @id @default(cuid())
+
+  name            String   // e.g., "Liability Waiver", "Photo Release"
+  content         String   // HTML/markdown content of the waiver
+  isRequired      Boolean  @default(false) // Required for all clients?
+  isActive        Boolean  @default(true)
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  signatures      ClientWaiver[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+// Signed waiver record
+model ClientWaiver {
+  id              String   @id @default(cuid())
+
+  signedAt        DateTime @default(now())
+  signatureData   String   // Base64 signature image or typed name
+  signatureType   SignatureType @default(TYPED)
+  ipAddress       String?  // IP address when signed
+  userAgent       String?  // Browser info when signed
+
+  // Optional expiration (some waivers need annual renewal)
+  expiresAt       DateTime?
+
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  templateId      String
+  template        WaiverTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+
+  @@index([clientId])
+  @@index([templateId])
+  @@index([expiresAt])
+}
+
+enum SignatureType {
+  TYPED     // Typed name
+  DRAWN     // Canvas-drawn signature
+}
+
+// Grooming notes template
+model GroomingNoteTemplate {
+  id              String   @id @default(cuid())
+
+  name            String   // e.g., "Standard Bath Notes", "Full Groom Checklist"
+  description     String?
+  fields          Json     // Array of field definitions [{name, type, options, required}]
+  isDefault       Boolean  @default(false) // Auto-apply to appointments?
+  isActive        Boolean  @default(true)
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  notes           GroomingNote[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+// Grooming note per appointment (linked to template)
+model GroomingNote {
+  id              String   @id @default(cuid())
+
+  data            Json     // Filled-in field values from template
+  additionalNotes String?  // Free-form additional notes
+
+  appointmentId   String
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  petId           String
+  pet             Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  templateId      String?
+  template        GroomingNoteTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  createdById     String?  // Staff who created the note
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([appointmentId])
+  @@index([petId])
+  @@index([templateId])
+}
+
+// Invoice
+model Invoice {
+  id              String   @id @default(cuid())
+
+  invoiceNumber   String   // Auto-generated invoice number
+  status          InvoiceStatus @default(DRAFT)
+
+  // Dates
+  issueDate       DateTime @default(now())
+  dueDate         DateTime?
+  paidDate        DateTime?
+
+  // Amounts
+  subtotal        Float    @default(0)
+  taxRate         Float    @default(0)    // Percentage
+  taxAmount       Float    @default(0)
+  discountAmount  Float    @default(0)
+  totalAmount     Float    @default(0)
+
+  // Payment tracking
+  amountPaid      Float    @default(0)
+  balanceDue      Float    @default(0)
+
+  // Notes
+  notes           String?  // Notes shown on invoice
+  internalNotes   String?  // Internal notes not shown to client
+
+  // PDF storage
+  pdfUrl          String?
+
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  appointmentId   String?  @unique
+  appointment     Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  lineItems       InvoiceLineItem[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([organizationId, invoiceNumber])
+  @@index([organizationId])
+  @@index([clientId])
+  @@index([status])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  VIEWED
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  CANCELLED
+  REFUNDED
+}
+
+// Invoice line item
+model InvoiceLineItem {
+  id              String   @id @default(cuid())
+
+  description     String
+  quantity        Float    @default(1)
+  unitPrice       Float
+  amount          Float    // quantity * unitPrice
+
+  sortOrder       Int      @default(0)
+
+  invoiceId       String
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  // Optional link to service
+  serviceId       String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([invoiceId])
 }
