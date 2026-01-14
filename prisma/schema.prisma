@@ -51,6 +51,7 @@ model Organization {
   feedbacks       Feedback[]
   feedbackRequests FeedbackRequest[]
   recurringSchedules RecurringSchedule[]
+  inventoryItems  InventoryItem[]
 }
 
 // User account (linked to Clerk)
@@ -228,6 +229,7 @@ model Appointment {
   messageLogs     MessageLog[]
   feedbacks       Feedback[]
   feedbackRequests FeedbackRequest[]
+  inventoryUsage  InventoryUsage[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -570,4 +572,93 @@ model RecurringScheduleService {
   @@unique([recurringScheduleId, serviceId])
   @@index([recurringScheduleId])
   @@index([serviceId])
+}
+
+// Inventory item (grooming supplies, products)
+model InventoryItem {
+  id              String   @id @default(cuid())
+
+  name            String
+  description     String?
+  sku             String?  // Stock keeping unit
+  category        String?  // e.g., "Shampoo", "Tools", "Accessories"
+
+  // Stock tracking
+  quantity        Int      @default(0)
+  unit            String   @default("units") // e.g., "oz", "bottles", "units"
+  lowStockThreshold Int    @default(5)
+
+  // Cost and pricing
+  costPrice       Float?   // What we pay for it
+  sellPrice       Float?   // What we charge (if reselling)
+
+  // Supplier info
+  supplier        String?
+  supplierSku     String?
+  reorderUrl      String?
+
+  isActive        Boolean  @default(true)
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Relations
+  transactions    InventoryTransaction[]
+  usageRecords    InventoryUsage[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([category])
+  @@index([isActive])
+}
+
+// Inventory transaction (stock in/out)
+model InventoryTransaction {
+  id              String   @id @default(cuid())
+
+  type            TransactionType
+  quantity        Int      // Positive for additions, negative for removals
+  notes           String?
+
+  // For purchases
+  unitCost        Float?
+  totalCost       Float?
+  invoiceNumber   String?
+
+  itemId          String
+  item            InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+
+  @@index([itemId])
+  @@index([createdAt])
+}
+
+enum TransactionType {
+  PURCHASE      // Buying new stock
+  ADJUSTMENT    // Manual stock adjustment
+  RETURN        // Return to supplier
+  DAMAGED       // Write-off damaged items
+  USED          // Used in service (links to appointment)
+  SOLD          // Sold to customer
+}
+
+// Inventory usage per appointment
+model InventoryUsage {
+  id              String   @id @default(cuid())
+
+  quantity        Float    // Amount used (can be fractional, e.g., 2.5 oz of shampoo)
+
+  itemId          String
+  item            InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  appointmentId   String
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+
+  @@index([itemId])
+  @@index([appointmentId])
 }
