@@ -206,6 +206,7 @@ model Appointment {
 }
 
 enum AppointmentStatus {
+  PENDING      // Waiting for groomer approval (online bookings)
   SCHEDULED
   CONFIRMED
   IN_PROGRESS

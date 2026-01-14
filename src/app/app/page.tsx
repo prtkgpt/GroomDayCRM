@@ -8,21 +8,24 @@ import {
   PawPrint,
   ArrowRight,
   AlertCircle,
+  Bell,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { getDashboardStats } from "@/lib/actions/organization"
-import { getTodayAppointments, getUpcomingAppointments, getUnpaidAppointments } from "@/lib/actions/appointments"
+import { getTodayAppointments, getUpcomingAppointments, getUnpaidAppointments, getPendingAppointments } from "@/lib/actions/appointments"
 import { formatCurrency, formatTime, getStatusColor, getStatusLabel } from "@/lib/utils"
+import { PendingBookingsCard } from "./pending-bookings-card"
 
 export default async function DashboardPage() {
-  const [stats, todayAppointments, upcomingAppointments, unpaidAppointments] =
+  const [stats, todayAppointments, upcomingAppointments, unpaidAppointments, pendingAppointments] =
     await Promise.all([
       getDashboardStats(),
       getTodayAppointments(),
       getUpcomingAppointments(5),
       getUnpaidAppointments(),
+      getPendingAppointments(),
     ])
 
   return (
@@ -93,6 +96,11 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Pending Bookings Alert */}
+      {pendingAppointments.length > 0 && (
+        <PendingBookingsCard appointments={pendingAppointments} />
+      )}
 
       {/* Unpaid Alert */}
       {stats.unpaidCount > 0 && (

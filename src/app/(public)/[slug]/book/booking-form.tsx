@@ -188,13 +188,13 @@ export function BookingForm({ organization, services }: BookingFormProps) {
       <Card>
         <CardContent className="pt-8 pb-8 text-center">
           <div className="flex justify-center mb-4">
-            <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+            <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
+              <Clock className="h-8 w-8 text-blue-600" />
             </div>
           </div>
-          <h2 className="text-2xl font-bold mb-2">Booking Confirmed!</h2>
+          <h2 className="text-2xl font-bold mb-2">Booking Request Submitted!</h2>
           <p className="text-muted-foreground mb-6">
-            Your appointment has been scheduled successfully.
+            Your appointment request is pending approval. You&apos;ll receive a confirmation email once approved.
           </p>
           <div className="bg-muted rounded-lg p-4 text-left space-y-2">
             <p>
@@ -204,16 +204,16 @@ export function BookingForm({ organization, services }: BookingFormProps) {
               <span className="font-medium">Pet:</span> {bookingResult.petName}
             </p>
             <p>
-              <span className="font-medium">Date:</span>{" "}
+              <span className="font-medium">Requested Date:</span>{" "}
               {format(bookingResult.dateTime, "EEEE, MMMM d, yyyy")}
             </p>
             <p>
-              <span className="font-medium">Time:</span>{" "}
+              <span className="font-medium">Requested Time:</span>{" "}
               {format(bookingResult.dateTime, "h:mm a")}
             </p>
           </div>
           <p className="mt-6 text-sm text-muted-foreground">
-            A confirmation email has been sent to {formData.email}
+            We&apos;ll send a confirmation to {formData.email} once your booking is approved.
           </p>
         </CardContent>
       </Card>

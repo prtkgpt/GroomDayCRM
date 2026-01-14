@@ -5,6 +5,7 @@ const isPublicRoute = createRouteMatcher([
   "/login(.*)",
   "/signup(.*)",
   "/api/webhooks(.*)",
+  "/:slug/book",  // Public booking pages
 ])
 
 export default clerkMiddleware(async (auth, req) => {
