@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ interface BusinessSettingsProps {
     id: string
     name: string
     slug: string
+    description: string | null
     email: string | null
     phone: string | null
     address: string | null
@@ -62,6 +64,7 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
     defaultValues: {
       name: organization.name,
       slug: organization.slug,
+      description: organization.description || "",
       email: organization.email || "",
       phone: organization.phone || "",
       address: organization.address || "",
@@ -75,9 +78,11 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
     },
   })
 
-  const bookingUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/${form.watch("slug")}/book`
-    : `/${form.watch("slug")}/book`
+  const landingUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/${form.watch("slug")}`
+    : `/${form.watch("slug")}`
+
+  const bookingUrl = `${landingUrl}/book`
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(bookingUrl)
@@ -128,16 +133,32 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 p-3 bg-background rounded-lg border">
-            <span className="text-sm flex-1 truncate">{bookingUrl}</span>
-            <Button type="button" variant="ghost" size="icon" onClick={copyToClipboard}>
-              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-            </Button>
-            <Button type="button" variant="ghost" size="icon" asChild>
-              <a href={bookingUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </Button>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 p-3 bg-background rounded-lg border">
+              <div className="flex-1">
+                <p className="text-xs text-muted-foreground mb-1">Landing Page</p>
+                <span className="text-sm truncate block">{landingUrl}</span>
+              </div>
+              <Button type="button" variant="ghost" size="icon" asChild>
+                <a href={landingUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </Button>
+            </div>
+            <div className="flex items-center gap-2 p-3 bg-background rounded-lg border">
+              <div className="flex-1">
+                <p className="text-xs text-muted-foreground mb-1">Booking Page</p>
+                <span className="text-sm truncate block">{bookingUrl}</span>
+              </div>
+              <Button type="button" variant="ghost" size="icon" onClick={copyToClipboard}>
+                {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              </Button>
+              <Button type="button" variant="ghost" size="icon" asChild>
+                <a href={bookingUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -154,6 +175,19 @@ export function BusinessSettings({ organization }: BusinessSettingsProps) {
           <div>
             <Label htmlFor="name">Business Name *</Label>
             <Input id="name" {...form.register("name")} />
+          </div>
+
+          <div>
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              {...form.register("description")}
+              placeholder="Tell customers about your grooming services..."
+              rows={3}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Shown on your public landing page
+            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

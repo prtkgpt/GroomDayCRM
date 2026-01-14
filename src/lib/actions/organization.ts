@@ -39,6 +39,7 @@ export async function updateOrganization(data: OrganizationFormData) {
     data: {
       name: validated.name,
       slug: validated.slug,
+      description: validated.description || null,
       email: validated.email || null,
       phone: validated.phone || null,
       address: validated.address || null,
