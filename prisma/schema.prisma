@@ -21,9 +21,9 @@ model Organization {
   city            String?
   state           String?
   zipCode         String?
-  timezone        String   @default("America/New_York")
-  businessHoursStart String @default("09:00")
-  businessHoursEnd   String @default("17:00")
+  timezone        String   @default("America/Los_Angeles")
+  businessHoursStart String @default("08:00") // 8am PST - earliest start time
+  businessHoursEnd   String @default("17:00") // 5pm PST - latest start time (hard end is 8pm)
   appointmentBuffer  Int    @default(15) // minutes between appointments
 
   // Online booking settings

@@ -2,6 +2,15 @@
 
 import { db } from "@/lib/db"
 import { addDays, addHours, format, parse, setHours, setMinutes, startOfDay, isBefore, isAfter, addMinutes } from "date-fns"
+import { toZonedTime, fromZonedTime } from "date-fns-tz"
+
+// Business timezone (PST/PDT)
+const BUSINESS_TIMEZONE = "America/Los_Angeles"
+
+// Business hours in PST
+const BUSINESS_START_HOUR = 8  // 8:00 AM PST - earliest start time
+const BUSINESS_END_START_HOUR = 17  // 5:00 PM PST - latest start time
+const BUSINESS_HARD_END_HOUR = 20  // 8:00 PM PST - latest end time
 
 // Get organization by slug for public booking page
 export async function getOrganizationBySlug(slug: string) {
@@ -56,6 +65,7 @@ export async function getPublicServices(organizationId: string) {
 }
 
 // Get available time slots for a given date
+// Business hours: Start between 8am-5pm PST, End no later than 8pm PST
 export async function getAvailableSlots(
   organizationId: string,
   date: Date,
@@ -68,21 +78,34 @@ export async function getAvailableSlots(
       businessHoursEnd: true,
       appointmentBuffer: true,
       bookingLeadTime: true,
+      timezone: true,
     },
   })
 
   if (!org) return []
 
-  const dayStart = startOfDay(date)
-  const dayEnd = addDays(dayStart, 1)
+  // Convert the input date to PST timezone
+  const dateInPST = toZonedTime(date, BUSINESS_TIMEZONE)
+  const dayStartPST = startOfDay(dateInPST)
+
+  // Set business hours in PST
+  // Appointments can START between 8am-5pm PST
+  const businessStartPST = setMinutes(setHours(dayStartPST, BUSINESS_START_HOUR), 0)
+  const latestStartTimePST = setMinutes(setHours(dayStartPST, BUSINESS_END_START_HOUR), 0)
+  // Appointments must END by 8pm PST
+  const hardEndTimePST = setMinutes(setHours(dayStartPST, BUSINESS_HARD_END_HOUR), 0)
+
+  // Convert PST times to UTC for database queries
+  const dayStartUTC = fromZonedTime(dayStartPST, BUSINESS_TIMEZONE)
+  const dayEndUTC = fromZonedTime(addDays(dayStartPST, 1), BUSINESS_TIMEZONE)
 
   // Get existing appointments for this day
   const existingAppointments = await db.appointment.findMany({
     where: {
       organizationId,
       dateTime: {
-        gte: dayStart,
-        lt: dayEnd,
+        gte: dayStartUTC,
+        lt: dayEndUTC,
       },
       status: {
         notIn: ["CANCELED", "NO_SHOW"],
@@ -95,49 +118,54 @@ export async function getAvailableSlots(
     orderBy: { dateTime: "asc" },
   })
 
-  // Parse business hours
-  const [startHour, startMin] = org.businessHoursStart.split(":").map(Number)
-  const [endHour, endMin] = org.businessHoursEnd.split(":").map(Number)
-
-  const businessStart = setMinutes(setHours(dayStart, startHour), startMin)
-  const businessEnd = setMinutes(setHours(dayStart, endHour), endMin)
-
-  // Calculate minimum booking time (current time + lead time)
-  const minBookingTime = addHours(new Date(), org.bookingLeadTime)
+  // Calculate minimum booking time (current time + lead time) in PST
+  const nowInPST = toZonedTime(new Date(), BUSINESS_TIMEZONE)
+  const minBookingTimePST = addHours(nowInPST, org.bookingLeadTime)
 
   // Generate all possible slots (every 30 minutes)
   const slots: { time: string; available: boolean }[] = []
-  let currentSlot = businessStart
+  let currentSlotPST = businessStartPST
 
-  while (isBefore(currentSlot, businessEnd)) {
-    // Check if slot end time is within business hours
-    const slotEnd = addMinutes(currentSlot, duration + org.appointmentBuffer)
+  // Loop through all slots from 8am to 5pm PST (latest start time)
+  while (isBefore(currentSlotPST, latestStartTimePST) ||
+         currentSlotPST.getTime() === latestStartTimePST.getTime()) {
 
-    if (isAfter(slotEnd, businessEnd)) {
-      break
+    // Calculate when this appointment would end (including buffer)
+    const slotEndPST = addMinutes(currentSlotPST, duration + org.appointmentBuffer)
+
+    // Skip if appointment would end after 8pm PST
+    if (isAfter(slotEndPST, hardEndTimePST)) {
+      currentSlotPST = addMinutes(currentSlotPST, 30)
+      continue
     }
 
     // Check if slot is in the past or before lead time
-    const isPastLeadTime = isAfter(currentSlot, minBookingTime)
+    const isPastLeadTime = isAfter(currentSlotPST, minBookingTimePST)
+
+    // Convert current slot to UTC for comparison with existing appointments
+    const currentSlotUTC = fromZonedTime(currentSlotPST, BUSINESS_TIMEZONE)
 
     // Check if slot conflicts with existing appointments
     const hasConflict = existingAppointments.some((appt) => {
-      const apptStart = new Date(appt.dateTime)
-      const apptEnd = addMinutes(apptStart, appt.duration + org.appointmentBuffer)
+      const apptStartUTC = new Date(appt.dateTime)
+      const apptEndUTC = addMinutes(apptStartUTC, appt.duration + org.appointmentBuffer)
+
+      // Convert to PST for comparison
+      const slotEndUTC = fromZonedTime(slotEndPST, BUSINESS_TIMEZONE)
 
       // Check for overlap
       return (
-        (isBefore(currentSlot, apptEnd) && isAfter(addMinutes(currentSlot, duration), apptStart))
+        isBefore(currentSlotUTC, apptEndUTC) && isAfter(slotEndUTC, apptStartUTC)
       )
     })
 
     slots.push({
-      time: format(currentSlot, "HH:mm"),
+      time: format(currentSlotPST, "HH:mm"),
       available: isPastLeadTime && !hasConflict,
     })
 
     // Move to next slot (30-minute intervals)
-    currentSlot = addMinutes(currentSlot, 30)
+    currentSlotPST = addMinutes(currentSlotPST, 30)
   }
 
   return slots
@@ -239,6 +267,33 @@ async function createOrUpdatePet(
   }
 }
 
+// Validate appointment time is within business hours (PST)
+function validateBusinessHours(
+  dateTimePST: Date,
+  durationMinutes: number,
+  bufferMinutes: number
+): { valid: boolean; error?: string } {
+  const hour = dateTimePST.getHours()
+  const endTime = addMinutes(dateTimePST, durationMinutes + bufferMinutes)
+  const endHour = endTime.getHours()
+  const endMinute = endTime.getMinutes()
+
+  // Check if start time is between 8am and 5pm PST
+  if (hour < BUSINESS_START_HOUR) {
+    return { valid: false, error: "Appointments cannot start before 8:00 AM PST" }
+  }
+  if (hour >= BUSINESS_END_START_HOUR && !(hour === BUSINESS_END_START_HOUR && dateTimePST.getMinutes() === 0)) {
+    return { valid: false, error: "Appointments cannot start after 5:00 PM PST" }
+  }
+
+  // Check if end time is by 8pm PST
+  if (endHour > BUSINESS_HARD_END_HOUR || (endHour === BUSINESS_HARD_END_HOUR && endMinute > 0)) {
+    return { valid: false, error: "Appointments must end by 8:00 PM PST" }
+  }
+
+  return { valid: true }
+}
+
 // Submit a booking
 export async function submitBooking(data: {
   organizationId: string
@@ -265,6 +320,7 @@ export async function submitBooking(data: {
     where: { id: data.organizationId },
     select: {
       bookingRequiresApproval: true,
+      appointmentBuffer: true,
     },
   })
 
@@ -288,12 +344,21 @@ export async function submitBooking(data: {
   const totalDuration = services.reduce((sum, s) => sum + s.defaultDuration, 0)
   const subtotal = services.reduce((sum, s) => sum + s.defaultPrice, 0)
 
-  // Parse date and time
-  const dateTime = parse(
+  // Parse date and time as PST
+  const dateTimePST = parse(
     `${data.date} ${data.time}`,
     "yyyy-MM-dd HH:mm",
     new Date()
   )
+
+  // Validate business hours
+  const validation = validateBusinessHours(dateTimePST, totalDuration, org.appointmentBuffer)
+  if (!validation.valid) {
+    return { success: false, error: validation.error }
+  }
+
+  // Convert PST time to UTC for storage
+  const dateTime = fromZonedTime(dateTimePST, BUSINESS_TIMEZONE)
 
   try {
     // Find or create client

@@ -6,6 +6,46 @@ import { requireOrganizationId } from "@/lib/auth"
 import { appointmentSchema, type AppointmentFormData } from "@/lib/validations"
 import { Resend } from "resend"
 import { findMatchingWaitlistEntries, notifyWaitlistClient } from "./waitlist"
+import { toZonedTime, fromZonedTime } from "date-fns-tz"
+import { addMinutes } from "date-fns"
+
+// Business timezone (PST/PDT)
+const BUSINESS_TIMEZONE = "America/Los_Angeles"
+
+// Business hours in PST
+const BUSINESS_START_HOUR = 8  // 8:00 AM PST - earliest start time
+const BUSINESS_END_START_HOUR = 17  // 5:00 PM PST - latest start time
+const BUSINESS_HARD_END_HOUR = 20  // 8:00 PM PST - latest end time
+
+// Validate appointment time is within business hours (PST)
+function validateBusinessHours(
+  dateTimeUTC: Date,
+  durationMinutes: number,
+  bufferMinutes: number = 15
+): { valid: boolean; error?: string } {
+  // Convert UTC to PST
+  const dateTimePST = toZonedTime(dateTimeUTC, BUSINESS_TIMEZONE)
+  const hour = dateTimePST.getHours()
+  const minute = dateTimePST.getMinutes()
+  const endTime = addMinutes(dateTimePST, durationMinutes + bufferMinutes)
+  const endHour = endTime.getHours()
+  const endMinute = endTime.getMinutes()
+
+  // Check if start time is between 8am and 5pm PST
+  if (hour < BUSINESS_START_HOUR) {
+    return { valid: false, error: "Appointments cannot start before 8:00 AM PST" }
+  }
+  if (hour > BUSINESS_END_START_HOUR || (hour === BUSINESS_END_START_HOUR && minute > 0)) {
+    return { valid: false, error: "Appointments cannot start after 5:00 PM PST" }
+  }
+
+  // Check if end time is by 8pm PST
+  if (endHour > BUSINESS_HARD_END_HOUR || (endHour === BUSINESS_HARD_END_HOUR && endMinute > 0)) {
+    return { valid: false, error: "Appointments must end by 8:00 PM PST" }
+  }
+
+  return { valid: true }
+}
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -159,6 +199,14 @@ export async function createAppointment(data: AppointmentFormData) {
   // Calculate total
   const subtotal = services.reduce((sum, s) => sum + s.defaultPrice, 0)
   const duration = services.reduce((sum, s) => sum + s.defaultDuration, 0)
+  const appointmentDuration = validated.duration || duration
+
+  // Validate business hours (8am-5pm start, end by 8pm PST)
+  const dateTime = new Date(validated.dateTime)
+  const validation = validateBusinessHours(dateTime, appointmentDuration)
+  if (!validation.valid) {
+    throw new Error(validation.error)
+  }
 
   const appointment = await db.appointment.create({
     data: {
@@ -482,6 +530,25 @@ export async function declineBooking(id: string, reason?: string) {
 
 export async function updateAppointment(id: string, data: Partial<AppointmentFormData>) {
   const organizationId = await requireOrganizationId()
+
+  // If dateTime is being updated, validate business hours
+  if (data.dateTime) {
+    // Get current appointment to check duration
+    const currentAppointment = await db.appointment.findFirst({
+      where: { id, organizationId },
+      select: { duration: true },
+    })
+
+    if (!currentAppointment) {
+      throw new Error("Appointment not found")
+    }
+
+    const newDuration = data.duration || currentAppointment.duration
+    const validation = validateBusinessHours(new Date(data.dateTime), newDuration)
+    if (!validation.valid) {
+      throw new Error(validation.error)
+    }
+  }
 
   const updateData: any = {}
 
