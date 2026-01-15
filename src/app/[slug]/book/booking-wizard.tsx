@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
-import { getAvailableSlots, submitBooking } from "@/lib/actions/public-booking"
+import { getAvailableSlotsDetailed, submitBooking } from "@/lib/actions/public-booking"
 import { addToPublicWaitlist } from "@/lib/actions/waitlist"
 
 interface Organization {
@@ -124,7 +124,7 @@ export function BookingWizard({ organization, services }: BookingWizardProps) {
     setSelectedTime(null)
 
     startTransition(async () => {
-      const slots = await getAvailableSlots(organization.id, date, totalDuration)
+      const slots = await getAvailableSlotsDetailed(organization.id, date, totalDuration)
       setAvailableSlots(slots)
     })
   }

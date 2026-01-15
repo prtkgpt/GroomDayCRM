@@ -37,6 +37,18 @@ export async function getOrganizationBySlug(slug: string) {
       bookingLeadTime: true,
       bookingMaxDaysAhead: true,
       bookingRequiresApproval: true,
+      services: {
+        where: { isActive: true },
+        orderBy: [{ isAddOn: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          defaultPrice: true,
+          defaultDuration: true,
+          isAddOn: true,
+        },
+      },
     },
   })
 }
@@ -68,9 +80,9 @@ export async function getPublicServices(organizationId: string) {
 // Business hours: Start between 8am-5pm PST, End no later than 8pm PST
 export async function getAvailableSlots(
   organizationId: string,
-  date: Date,
+  date: Date | string,
   duration: number // total duration in minutes
-) {
+): Promise<string[]> {
   const org = await db.organization.findUnique({
     where: { id: organizationId },
     select: {
@@ -84,8 +96,11 @@ export async function getAvailableSlots(
 
   if (!org) return []
 
+  // Handle both Date object and ISO string input
+  const inputDate = typeof date === 'string' ? new Date(date) : date
+
   // Convert the input date to PST timezone
-  const dateInPST = toZonedTime(date, BUSINESS_TIMEZONE)
+  const dateInPST = toZonedTime(inputDate, BUSINESS_TIMEZONE)
   const dayStartPST = startOfDay(dateInPST)
 
   // Set business hours in PST
@@ -123,7 +138,8 @@ export async function getAvailableSlots(
   const minBookingTimePST = addHours(nowInPST, org.bookingLeadTime)
 
   // Generate all possible slots (every 30 minutes)
-  const slots: { time: string; available: boolean }[] = []
+  const slotsWithAvailability: { time: string; available: boolean }[] = []
+  const slotsAsISOStrings: string[] = []
   let currentSlotPST = businessStartPST
 
   // Loop through all slots from 8am to 5pm PST (latest start time)
@@ -159,12 +175,110 @@ export async function getAvailableSlots(
       )
     })
 
+    const isAvailable = isPastLeadTime && !hasConflict
+
+    // Add to both formats
+    slotsWithAvailability.push({
+      time: format(currentSlotPST, "HH:mm"),
+      available: isAvailable,
+    })
+
+    // Only add available slots as ISO strings (for legacy booking form)
+    if (isAvailable) {
+      slotsAsISOStrings.push(currentSlotUTC.toISOString())
+    }
+
+    // Move to next slot (30-minute intervals)
+    currentSlotPST = addMinutes(currentSlotPST, 30)
+  }
+
+  // Return ISO strings for the legacy booking form (which expects string[])
+  return slotsAsISOStrings
+}
+
+// Get available time slots with availability info (for booking-wizard)
+export async function getAvailableSlotsDetailed(
+  organizationId: string,
+  date: Date,
+  duration: number
+): Promise<{ time: string; available: boolean }[]> {
+  const org = await db.organization.findUnique({
+    where: { id: organizationId },
+    select: {
+      businessHoursStart: true,
+      businessHoursEnd: true,
+      appointmentBuffer: true,
+      bookingLeadTime: true,
+      timezone: true,
+    },
+  })
+
+  if (!org) return []
+
+  // Convert the input date to PST timezone
+  const dateInPST = toZonedTime(date, BUSINESS_TIMEZONE)
+  const dayStartPST = startOfDay(dateInPST)
+
+  // Set business hours in PST
+  const businessStartPST = setMinutes(setHours(dayStartPST, BUSINESS_START_HOUR), 0)
+  const latestStartTimePST = setMinutes(setHours(dayStartPST, BUSINESS_END_START_HOUR), 0)
+  const hardEndTimePST = setMinutes(setHours(dayStartPST, BUSINESS_HARD_END_HOUR), 0)
+
+  // Convert PST times to UTC for database queries
+  const dayStartUTC = fromZonedTime(dayStartPST, BUSINESS_TIMEZONE)
+  const dayEndUTC = fromZonedTime(addDays(dayStartPST, 1), BUSINESS_TIMEZONE)
+
+  // Get existing appointments for this day
+  const existingAppointments = await db.appointment.findMany({
+    where: {
+      organizationId,
+      dateTime: {
+        gte: dayStartUTC,
+        lt: dayEndUTC,
+      },
+      status: {
+        notIn: ["CANCELED", "NO_SHOW"],
+      },
+    },
+    select: {
+      dateTime: true,
+      duration: true,
+    },
+    orderBy: { dateTime: "asc" },
+  })
+
+  // Calculate minimum booking time in PST
+  const nowInPST = toZonedTime(new Date(), BUSINESS_TIMEZONE)
+  const minBookingTimePST = addHours(nowInPST, org.bookingLeadTime)
+
+  const slots: { time: string; available: boolean }[] = []
+  let currentSlotPST = businessStartPST
+
+  while (isBefore(currentSlotPST, latestStartTimePST) ||
+         currentSlotPST.getTime() === latestStartTimePST.getTime()) {
+
+    const slotEndPST = addMinutes(currentSlotPST, duration + org.appointmentBuffer)
+
+    if (isAfter(slotEndPST, hardEndTimePST)) {
+      currentSlotPST = addMinutes(currentSlotPST, 30)
+      continue
+    }
+
+    const isPastLeadTime = isAfter(currentSlotPST, minBookingTimePST)
+    const currentSlotUTC = fromZonedTime(currentSlotPST, BUSINESS_TIMEZONE)
+
+    const hasConflict = existingAppointments.some((appt) => {
+      const apptStartUTC = new Date(appt.dateTime)
+      const apptEndUTC = addMinutes(apptStartUTC, appt.duration + org.appointmentBuffer)
+      const slotEndUTC = fromZonedTime(slotEndPST, BUSINESS_TIMEZONE)
+      return isBefore(currentSlotUTC, apptEndUTC) && isAfter(slotEndUTC, apptStartUTC)
+    })
+
     slots.push({
       time: format(currentSlotPST, "HH:mm"),
       available: isPastLeadTime && !hasConflict,
     })
 
-    // Move to next slot (30-minute intervals)
     currentSlotPST = addMinutes(currentSlotPST, 30)
   }
 
@@ -269,11 +383,14 @@ async function createOrUpdatePet(
 
 // Validate appointment time is within business hours (PST)
 function validateBusinessHours(
-  dateTimePST: Date,
+  dateTimeUTC: Date,
   durationMinutes: number,
   bufferMinutes: number
 ): { valid: boolean; error?: string } {
+  // Convert UTC to PST for validation
+  const dateTimePST = toZonedTime(dateTimeUTC, BUSINESS_TIMEZONE)
   const hour = dateTimePST.getHours()
+  const minute = dateTimePST.getMinutes()
   const endTime = addMinutes(dateTimePST, durationMinutes + bufferMinutes)
   const endHour = endTime.getHours()
   const endMinute = endTime.getMinutes()
@@ -282,7 +399,7 @@ function validateBusinessHours(
   if (hour < BUSINESS_START_HOUR) {
     return { valid: false, error: "Appointments cannot start before 8:00 AM PST" }
   }
-  if (hour >= BUSINESS_END_START_HOUR && !(hour === BUSINESS_END_START_HOUR && dateTimePST.getMinutes() === 0)) {
+  if (hour > BUSINESS_END_START_HOUR || (hour === BUSINESS_END_START_HOUR && minute > 0)) {
     return { valid: false, error: "Appointments cannot start after 5:00 PM PST" }
   }
 
@@ -344,21 +461,20 @@ export async function submitBooking(data: {
   const totalDuration = services.reduce((sum, s) => sum + s.defaultDuration, 0)
   const subtotal = services.reduce((sum, s) => sum + s.defaultPrice, 0)
 
-  // Parse date and time as PST
+  // Parse date and time as PST, then convert to UTC
   const dateTimePST = parse(
     `${data.date} ${data.time}`,
     "yyyy-MM-dd HH:mm",
     new Date()
   )
+  // Convert PST time to UTC for storage
+  const dateTime = fromZonedTime(dateTimePST, BUSINESS_TIMEZONE)
 
-  // Validate business hours
-  const validation = validateBusinessHours(dateTimePST, totalDuration, org.appointmentBuffer)
+  // Validate business hours (function expects UTC and converts internally)
+  const validation = validateBusinessHours(dateTime, totalDuration, org.appointmentBuffer)
   if (!validation.valid) {
     return { success: false, error: validation.error }
   }
-
-  // Convert PST time to UTC for storage
-  const dateTime = fromZonedTime(dateTimePST, BUSINESS_TIMEZONE)
 
   try {
     // Find or create client
@@ -445,4 +561,153 @@ export async function getClientPets(
   })
 
   return client?.pets || []
+}
+
+// Create a public booking (used by the legacy booking form)
+export async function createPublicBooking(data: {
+  organizationId: string
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  address?: string
+  petName: string
+  species: string
+  breed?: string
+  weight?: number
+  notes?: string
+  serviceId: string
+  dateTime: string // ISO string
+}) {
+  const org = await db.organization.findUnique({
+    where: { id: data.organizationId },
+    select: {
+      bookingRequiresApproval: true,
+      appointmentBuffer: true,
+    },
+  })
+
+  if (!org) {
+    throw new Error("Organization not found")
+  }
+
+  // Get the service
+  const service = await db.service.findFirst({
+    where: {
+      id: data.serviceId,
+      organizationId: data.organizationId,
+      isActive: true,
+    },
+  })
+
+  if (!service) {
+    throw new Error("Service not found")
+  }
+
+  // Parse the ISO dateTime - it's already in UTC
+  const dateTimeUTC = new Date(data.dateTime)
+
+  // Validate business hours
+  const validation = validateBusinessHours(dateTimeUTC, service.defaultDuration, org.appointmentBuffer)
+  if (!validation.valid) {
+    throw new Error(validation.error)
+  }
+
+  // Find or create client
+  let client = await db.client.findFirst({
+    where: {
+      organizationId: data.organizationId,
+      OR: [{ email: data.email }, data.phone ? { phone: data.phone } : {}].filter(
+        (c) => Object.keys(c).length > 0
+      ),
+    },
+  })
+
+  if (client) {
+    client = await db.client.update({
+      where: { id: client.id },
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+      },
+    })
+  } else {
+    client = await db.client.create({
+      data: {
+        organizationId: data.organizationId,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+      },
+    })
+  }
+
+  // Create or find pet
+  let pet = await db.pet.findFirst({
+    where: {
+      clientId: client.id,
+      name: data.petName,
+    },
+  })
+
+  if (pet) {
+    pet = await db.pet.update({
+      where: { id: pet.id },
+      data: {
+        species: data.species,
+        breed: data.breed,
+        weight: data.weight,
+        behaviorNotes: data.notes,
+      },
+    })
+  } else {
+    pet = await db.pet.create({
+      data: {
+        clientId: client.id,
+        name: data.petName,
+        species: data.species,
+        breed: data.breed,
+        weight: data.weight,
+        behaviorNotes: data.notes,
+      },
+    })
+  }
+
+  // Create the appointment
+  const appointment = await db.appointment.create({
+    data: {
+      organizationId: data.organizationId,
+      clientId: client.id,
+      dateTime: dateTimeUTC,
+      duration: service.defaultDuration,
+      status: org.bookingRequiresApproval ? "PENDING" : "SCHEDULED",
+      notes: data.notes,
+      subtotal: service.defaultPrice,
+      totalAmount: service.defaultPrice,
+      appointmentPets: {
+        create: {
+          petId: pet.id,
+        },
+      },
+      appointmentServices: {
+        create: {
+          serviceId: service.id,
+          price: service.defaultPrice,
+          duration: service.defaultDuration,
+        },
+      },
+    },
+  })
+
+  return {
+    clientName: `${client.firstName} ${client.lastName}`,
+    petName: pet.name,
+    dateTime: appointment.dateTime.toISOString(),
+    serviceName: service.name,
+  }
 }
