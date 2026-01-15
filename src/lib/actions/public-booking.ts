@@ -78,6 +78,7 @@ export async function getPublicServices(organizationId: string) {
 
 // Get available time slots for a given date
 // Business hours: Start between 8am-5pm PST, End no later than 8pm PST
+// Returns time strings in "HH:mm" format (PST times)
 export async function getAvailableSlots(
   organizationId: string,
   date: Date | string,
@@ -99,18 +100,12 @@ export async function getAvailableSlots(
   // Handle both Date object and ISO string input
   const inputDate = typeof date === 'string' ? new Date(date) : date
 
-  // Convert the input date to PST timezone
-  const dateInPST = toZonedTime(inputDate, BUSINESS_TIMEZONE)
-  const dayStartPST = startOfDay(dateInPST)
+  // Get the date portion only (YYYY-MM-DD) to avoid timezone issues
+  const dateStr = format(inputDate, "yyyy-MM-dd")
 
-  // Set business hours in PST
-  // Appointments can START between 8am-5pm PST
-  const businessStartPST = setMinutes(setHours(dayStartPST, BUSINESS_START_HOUR), 0)
-  const latestStartTimePST = setMinutes(setHours(dayStartPST, BUSINESS_END_START_HOUR), 0)
-  // Appointments must END by 8pm PST
-  const hardEndTimePST = setMinutes(setHours(dayStartPST, BUSINESS_HARD_END_HOUR), 0)
-
-  // Convert PST times to UTC for database queries
+  // Create PST day boundaries for database query
+  // Parse the date as PST midnight
+  const dayStartPST = parse(`${dateStr} 00:00`, "yyyy-MM-dd HH:mm", new Date())
   const dayStartUTC = fromZonedTime(dayStartPST, BUSINESS_TIMEZONE)
   const dayEndUTC = fromZonedTime(addDays(dayStartPST, 1), BUSINESS_TIMEZONE)
 
@@ -134,66 +129,52 @@ export async function getAvailableSlots(
   })
 
   // Calculate minimum booking time (current time + lead time) in PST
-  const nowInPST = toZonedTime(new Date(), BUSINESS_TIMEZONE)
-  const minBookingTimePST = addHours(nowInPST, org.bookingLeadTime)
+  const nowUTC = new Date()
+  const minBookingTimeUTC = addHours(nowUTC, org.bookingLeadTime)
 
-  // Generate all possible slots (every 30 minutes)
-  const slotsWithAvailability: { time: string; available: boolean }[] = []
-  const slotsAsISOStrings: string[] = []
-  let currentSlotPST = businessStartPST
+  // Generate slots from 8am to 5pm PST
+  const availableSlots: string[] = []
 
-  // Loop through all slots from 8am to 5pm PST (latest start time)
-  while (isBefore(currentSlotPST, latestStartTimePST) ||
-         currentSlotPST.getTime() === latestStartTimePST.getTime()) {
+  for (let hour = BUSINESS_START_HOUR; hour <= BUSINESS_END_START_HOUR; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      // Skip 5:30 PM since we only allow starts up to 5:00 PM
+      if (hour === BUSINESS_END_START_HOUR && minute > 0) break
 
-    // Calculate when this appointment would end (including buffer)
-    const slotEndPST = addMinutes(currentSlotPST, duration + org.appointmentBuffer)
+      const timeStr = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
 
-    // Skip if appointment would end after 8pm PST
-    if (isAfter(slotEndPST, hardEndTimePST)) {
-      currentSlotPST = addMinutes(currentSlotPST, 30)
-      continue
+      // Create this slot's datetime in PST, then convert to UTC
+      const slotPST = parse(`${dateStr} ${timeStr}`, "yyyy-MM-dd HH:mm", new Date())
+      const slotUTC = fromZonedTime(slotPST, BUSINESS_TIMEZONE)
+
+      // Calculate end time
+      const slotEndUTC = addMinutes(slotUTC, duration + org.appointmentBuffer)
+      const slotEndPST = toZonedTime(slotEndUTC, BUSINESS_TIMEZONE)
+
+      // Check if appointment would end after 8pm PST
+      if (slotEndPST.getHours() > BUSINESS_HARD_END_HOUR ||
+          (slotEndPST.getHours() === BUSINESS_HARD_END_HOUR && slotEndPST.getMinutes() > 0)) {
+        continue
+      }
+
+      // Check if slot is in the past or before lead time
+      if (isBefore(slotUTC, minBookingTimeUTC)) {
+        continue
+      }
+
+      // Check for conflicts with existing appointments
+      const hasConflict = existingAppointments.some((appt) => {
+        const apptStartUTC = new Date(appt.dateTime)
+        const apptEndUTC = addMinutes(apptStartUTC, appt.duration + org.appointmentBuffer)
+        return isBefore(slotUTC, apptEndUTC) && isAfter(slotEndUTC, apptStartUTC)
+      })
+
+      if (!hasConflict) {
+        availableSlots.push(timeStr)
+      }
     }
-
-    // Check if slot is in the past or before lead time
-    const isPastLeadTime = isAfter(currentSlotPST, minBookingTimePST)
-
-    // Convert current slot to UTC for comparison with existing appointments
-    const currentSlotUTC = fromZonedTime(currentSlotPST, BUSINESS_TIMEZONE)
-
-    // Check if slot conflicts with existing appointments
-    const hasConflict = existingAppointments.some((appt) => {
-      const apptStartUTC = new Date(appt.dateTime)
-      const apptEndUTC = addMinutes(apptStartUTC, appt.duration + org.appointmentBuffer)
-
-      // Convert to PST for comparison
-      const slotEndUTC = fromZonedTime(slotEndPST, BUSINESS_TIMEZONE)
-
-      // Check for overlap
-      return (
-        isBefore(currentSlotUTC, apptEndUTC) && isAfter(slotEndUTC, apptStartUTC)
-      )
-    })
-
-    const isAvailable = isPastLeadTime && !hasConflict
-
-    // Add to both formats
-    slotsWithAvailability.push({
-      time: format(currentSlotPST, "HH:mm"),
-      available: isAvailable,
-    })
-
-    // Only add available slots as ISO strings (for legacy booking form)
-    if (isAvailable) {
-      slotsAsISOStrings.push(currentSlotUTC.toISOString())
-    }
-
-    // Move to next slot (30-minute intervals)
-    currentSlotPST = addMinutes(currentSlotPST, 30)
   }
 
-  // Return ISO strings for the legacy booking form (which expects string[])
-  return slotsAsISOStrings
+  return availableSlots
 }
 
 // Get available time slots with availability info (for booking-wizard)
@@ -577,7 +558,8 @@ export async function createPublicBooking(data: {
   weight?: number
   notes?: string
   serviceId: string
-  dateTime: string // ISO string
+  date: string // YYYY-MM-DD format
+  time: string // HH:mm format (PST time)
 }) {
   const org = await db.organization.findUnique({
     where: { id: data.organizationId },
@@ -604,8 +586,14 @@ export async function createPublicBooking(data: {
     throw new Error("Service not found")
   }
 
-  // Parse the ISO dateTime - it's already in UTC
-  const dateTimeUTC = new Date(data.dateTime)
+  // Parse date and time as PST, then convert to UTC
+  const dateTimePST = parse(
+    `${data.date} ${data.time}`,
+    "yyyy-MM-dd HH:mm",
+    new Date()
+  )
+  // Convert PST time to UTC for storage
+  const dateTimeUTC = fromZonedTime(dateTimePST, BUSINESS_TIMEZONE)
 
   // Validate business hours
   const validation = validateBusinessHours(dateTimeUTC, service.defaultDuration, org.appointmentBuffer)

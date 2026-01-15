@@ -28,6 +28,14 @@ import {
 import { cn } from "@/lib/utils"
 import { getAvailableSlots, createPublicBooking } from "@/lib/actions/public-booking"
 
+// Convert "HH:mm" to "h:mm a" format (e.g., "08:00" -> "8:00 AM")
+function formatTimeString(timeStr: string): string {
+  const [hours, minutes] = timeStr.split(":").map(Number)
+  const period = hours >= 12 ? "PM" : "AM"
+  const displayHours = hours % 12 || 12
+  return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`
+}
+
 interface Service {
   id: string
   name: string
@@ -103,10 +111,13 @@ export function BookingForm({ organization, services }: BookingFormProps) {
   }
 
   const handleSubmit = () => {
-    if (!selectedService || !selectedSlot) return
+    if (!selectedService || !selectedSlot || !selectedDate) return
 
     startTransition(async () => {
       try {
+        // Format date as YYYY-MM-DD for the server
+        const dateStr = format(selectedDate, "yyyy-MM-dd")
+
         const result = await createPublicBooking({
           organizationId: organization.id,
           firstName: formData.firstName,
@@ -120,7 +131,8 @@ export function BookingForm({ organization, services }: BookingFormProps) {
           weight: formData.weight ? parseFloat(formData.weight) : undefined,
           notes: formData.notes || undefined,
           serviceId: selectedService.id,
-          dateTime: selectedSlot,
+          date: dateStr,
+          time: selectedSlot,
         })
 
         setBookingResult({
@@ -338,7 +350,7 @@ export function BookingForm({ organization, services }: BookingFormProps) {
                         size="sm"
                         onClick={() => setSelectedSlot(slot)}
                       >
-                        {format(new Date(slot), "h:mm a")}
+                        {formatTimeString(slot)}
                       </Button>
                     ))}
                   </div>
@@ -495,11 +507,11 @@ export function BookingForm({ organization, services }: BookingFormProps) {
                   </p>
                   <p>
                     <span className="text-muted-foreground">Date:</span>{" "}
-                    {format(new Date(selectedSlot), "EEEE, MMMM d, yyyy")}
+                    {selectedDate && format(selectedDate, "EEEE, MMMM d, yyyy")}
                   </p>
                   <p>
                     <span className="text-muted-foreground">Time:</span>{" "}
-                    {format(new Date(selectedSlot), "h:mm a")}
+                    {formatTimeString(selectedSlot)} (PST)
                   </p>
                   <p>
                     <span className="text-muted-foreground">Duration:</span>{" "}
