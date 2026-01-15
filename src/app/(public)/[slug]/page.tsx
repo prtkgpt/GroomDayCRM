@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { notFound } from "next/navigation"
 import {
   Phone,
@@ -12,8 +13,16 @@ import {
   Facebook,
   Instagram,
   User,
+  Heart,
+  Shield,
+  Sparkles,
+  Award,
+  Calendar,
+  Quote,
+  CheckCircle2,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { db } from "@/lib/db"
 import { getTheme } from "@/lib/themes"
 import { cn } from "@/lib/utils"
@@ -40,6 +49,64 @@ function YelpIcon({ className }: { className?: string }) {
     </svg>
   )
 }
+
+// Sample pet images (using placeholder URLs - in production these would come from the organization's gallery)
+const petImages = [
+  "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=400&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1517849845537-4d257902454a?w=400&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1598133894008-61f7fdb8cc3a?w=400&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1544568100-847a948585b9?w=400&h=400&fit=crop",
+]
+
+// Sample testimonials (in production these would come from the database)
+const testimonials = [
+  {
+    name: "Sarah M.",
+    pet: "Max (Golden Retriever)",
+    rating: 5,
+    text: "Absolutely amazing service! Max always comes back looking and smelling fantastic. The groomers are so gentle and patient with him.",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
+  },
+  {
+    name: "Michael R.",
+    pet: "Luna (Poodle)",
+    rating: 5,
+    text: "Best grooming experience we've ever had. They really take their time and Luna is always so happy after her appointments.",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
+  },
+  {
+    name: "Emily K.",
+    pet: "Buddy (Shih Tzu)",
+    rating: 5,
+    text: "The online booking is so convenient, and the results are always perfect. Buddy looks like a show dog every time!",
+    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop",
+  },
+]
+
+const whyChooseUs = [
+  {
+    icon: Heart,
+    title: "Gentle & Caring",
+    description: "We treat every pet like our own, with patience and love.",
+  },
+  {
+    icon: Award,
+    title: "Experienced Groomers",
+    description: "Our team has years of experience with all breeds.",
+  },
+  {
+    icon: Shield,
+    title: "Safe Products",
+    description: "We use only premium, pet-safe grooming products.",
+  },
+  {
+    icon: Sparkles,
+    title: "Spotless Results",
+    description: "Your pet will look and smell absolutely amazing.",
+  },
+]
 
 async function getOrganizationWithServices(slug: string) {
   const organization = await db.organization.findUnique({
@@ -110,111 +177,224 @@ export default async function BusinessLandingPage({
   return (
     <div className="min-h-screen bg-background">
       {/* Header Navigation */}
-      <header className={cn("sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60")}>
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href={`/${slug}`} className="flex items-center gap-2 font-semibold">
-            <PawPrint className={cn("h-5 w-5", theme.colors.badgeText)} />
-            {organization.name}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <Link href={`/${slug}`} className="flex items-center gap-2.5">
+            <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center", theme.colors.primary)}>
+              <PawPrint className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-lg font-semibold text-gray-900">{organization.name}</span>
           </Link>
+          <nav className="hidden md:flex items-center gap-8">
+            <a href="#services" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+              Services
+            </a>
+            <a href="#gallery" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+              Gallery
+            </a>
+            <a href="#reviews" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+              Reviews
+            </a>
+            <a href="#contact" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+              Contact
+            </a>
+          </nav>
           <div className="flex items-center gap-3">
             <Link
-              href={`/${slug}/book`}
-              className={cn(
-                "hidden sm:inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg transition-colors",
-                theme.colors.primary,
-                theme.colors.primaryForeground,
-                theme.colors.buttonHover
-              )}
-            >
-              <Scissors className="h-4 w-4" />
-              Book Now
-            </Link>
-            <Link
               href={`/${slug}/portal`}
-              className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border hover:bg-muted transition-colors"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors hidden sm:block"
             >
-              <User className="h-4 w-4" />
-              <span className="hidden sm:inline">Client Login</span>
-              <span className="sm:hidden">Login</span>
+              Sign In
+            </Link>
+            <Link href={`/${slug}/book`}>
+              <Button className={cn("rounded-full px-6", theme.colors.primary, theme.colors.buttonHover)}>
+                Book Now
+              </Button>
             </Link>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className={cn("relative overflow-hidden bg-gradient-to-b", theme.colors.gradient)}>
-        <div className={cn("absolute inset-0 bg-gradient-to-br", theme.colors.heroGradient)} />
-        <div className="max-w-5xl mx-auto px-4 py-16 sm:py-24 relative">
-          <div className="text-center">
-            <div className={cn(
-              "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6",
-              theme.colors.badge,
-              theme.colors.badgeText
-            )}>
-              <PawPrint className="h-4 w-4" />
-              Professional Pet Grooming
-            </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-              {organization.name}
-            </h1>
-            {organization.description && (
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-                {organization.description}
+      <section className="relative pt-16 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100" />
+        <div className="absolute top-20 right-0 w-[600px] h-[600px] bg-gradient-to-br from-primary/5 to-primary/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-primary/5 to-transparent rounded-full blur-3xl" />
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+            <div className="text-center lg:text-left">
+              <div className={cn(
+                "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6",
+                "bg-primary/10 text-primary"
+              )}>
+                <Sparkles className="h-4 w-4" />
+                Professional Pet Grooming
+              </div>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 tracking-tight leading-[1.1] mb-6">
+                Where Every Pet
+                <br />
+                <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                  Gets the Royal Treatment
+                </span>
+              </h1>
+              <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-xl mx-auto lg:mx-0">
+                {organization.description || "Experience premium grooming services that keep your furry friends looking fabulous and feeling their best."}
               </p>
-            )}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href={`/${slug}/book`}>
-                <button className={cn(
-                  "inline-flex items-center justify-center gap-2 text-lg px-8 py-3 rounded-lg font-medium transition-colors",
-                  theme.colors.primary,
-                  theme.colors.primaryForeground,
-                  theme.colors.buttonHover
-                )}>
-                  <Scissors className="h-5 w-5" />
-                  Book Appointment
-                </button>
-              </Link>
-              {organization.phone && (
-                <a href={`tel:${organization.phone}`}>
-                  <button className="inline-flex items-center justify-center gap-2 text-lg px-8 py-3 rounded-lg font-medium border bg-background hover:bg-muted transition-colors">
-                    <Phone className="h-5 w-5" />
-                    Call Us
-                  </button>
-                </a>
-              )}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <Link href={`/${slug}/book`}>
+                  <Button size="lg" className={cn("rounded-full px-8 text-base h-12", theme.colors.primary, theme.colors.buttonHover)}>
+                    <Calendar className="mr-2 h-5 w-5" />
+                    Book Appointment
+                  </Button>
+                </Link>
+                {organization.phone && (
+                  <a href={`tel:${organization.phone}`}>
+                    <Button variant="outline" size="lg" className="rounded-full px-8 text-base h-12 border-gray-300">
+                      <Phone className="mr-2 h-5 w-5" />
+                      {organization.phone}
+                    </Button>
+                  </a>
+                )}
+              </div>
+
+              {/* Trust badges */}
+              <div className="flex items-center gap-6 mt-10 justify-center lg:justify-start">
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                  <span className="text-sm font-medium text-gray-600">5.0 Rating</span>
+                </div>
+                <div className="h-5 w-px bg-gray-200" />
+                <div className="flex items-center gap-2">
+                  <Heart className="h-5 w-5 text-red-500 fill-red-500" />
+                  <span className="text-sm font-medium text-gray-600">500+ Happy Pets</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Hero Image Grid */}
+            <div className="relative hidden lg:block">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl">
+                    <Image
+                      src={petImages[0]}
+                      alt="Happy groomed dog"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="relative aspect-square rounded-3xl overflow-hidden shadow-xl">
+                    <Image
+                      src={petImages[1]}
+                      alt="Cute puppy"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-4 pt-8">
+                  <div className="relative aspect-square rounded-3xl overflow-hidden shadow-xl">
+                    <Image
+                      src={petImages[2]}
+                      alt="Dog getting groomed"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl">
+                    <Image
+                      src={petImages[3]}
+                      alt="Beautiful dog portrait"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+              </div>
+              {/* Floating badge */}
+              <div className="absolute -left-6 bottom-20 bg-white rounded-2xl shadow-xl p-4 flex items-center gap-3">
+                <div className={cn("h-12 w-12 rounded-full flex items-center justify-center", theme.colors.accent)}>
+                  <CheckCircle2 className={cn("h-6 w-6", theme.colors.badgeText)} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Satisfaction Guaranteed</p>
+                  <p className="text-xs text-gray-500">100% Happy Customers</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
+      {/* Why Choose Us */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {whyChooseUs.map((item) => (
+              <div key={item.title} className="text-center">
+                <div className={cn(
+                  "inline-flex items-center justify-center h-14 w-14 rounded-2xl mb-4",
+                  theme.colors.accent
+                )}>
+                  <item.icon className={cn("h-7 w-7", theme.colors.badgeText)} />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h3>
+                <p className="text-gray-600 text-sm">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Services Section */}
-      <section className="py-16 bg-muted/30">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Our Services</h2>
-            <p className="text-muted-foreground">
-              Professional grooming services tailored to your pet&apos;s needs
+      <section id="services" className="py-20 scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <span className={cn("text-sm font-semibold tracking-wide uppercase", theme.colors.badgeText)}>
+              Our Services
+            </span>
+            <h2 className="mt-2 text-3xl sm:text-4xl font-bold text-gray-900">
+              Premium Grooming Packages
+            </h2>
+            <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
+              From a simple bath to a full spa day, we offer services tailored to your pet&apos;s unique needs.
             </p>
           </div>
 
           {/* Main Services */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-            {mainServices.map((service) => (
-              <Card key={service.id} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start mb-3">
-                    <h3 className="font-semibold text-lg">{service.name}</h3>
-                    <span className={cn("text-xl font-bold", theme.colors.badgeText)}>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            {mainServices.map((service, index) => (
+              <Card
+                key={service.id}
+                className={cn(
+                  "group relative overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300",
+                  index === 0 && "lg:col-span-1 row-span-1"
+                )}
+              >
+                <div className={cn("absolute top-0 left-0 right-0 h-1", theme.colors.primary)} />
+                <CardContent className="p-8">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={cn(
+                      "h-12 w-12 rounded-xl flex items-center justify-center",
+                      theme.colors.accent
+                    )}>
+                      <Scissors className={cn("h-6 w-6", theme.colors.badgeText)} />
+                    </div>
+                    <span className={cn("text-2xl font-bold", theme.colors.badgeText)}>
                       ${service.defaultPrice}
                     </span>
                   </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{service.name}</h3>
                   {service.description && (
-                    <p className="text-muted-foreground text-sm mb-3">
-                      {service.description}
-                    </p>
+                    <p className="text-gray-600 mb-4 line-clamp-2">{service.description}</p>
                   )}
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4 mr-1" />
+                  <div className="flex items-center text-sm text-gray-500">
+                    <Clock className="h-4 w-4 mr-1.5" />
                     {service.defaultDuration} minutes
                   </div>
                 </CardContent>
@@ -224,15 +404,18 @@ export default async function BusinessLandingPage({
 
           {/* Add-ons */}
           {addOns.length > 0 && (
-            <div className="mt-8">
-              <h3 className="text-xl font-semibold mb-4 text-center">Add-On Services</h3>
+            <div className="mt-12">
+              <h3 className="text-xl font-semibold text-gray-900 text-center mb-6">
+                Enhance Your Visit with Add-Ons
+              </h3>
               <div className="flex flex-wrap justify-center gap-3">
                 {addOns.map((service) => (
                   <div
                     key={service.id}
-                    className="inline-flex items-center gap-2 bg-background border rounded-full px-4 py-2"
+                    className="inline-flex items-center gap-2 bg-white border border-gray-200 rounded-full px-5 py-2.5 shadow-sm hover:shadow-md transition-shadow"
                   >
-                    <span className="font-medium">{service.name}</span>
+                    <Sparkles className={cn("h-4 w-4", theme.colors.badgeText)} />
+                    <span className="font-medium text-gray-900">{service.name}</span>
                     <span className={cn("font-semibold", theme.colors.badgeText)}>
                       +${service.defaultPrice}
                     </span>
@@ -245,239 +428,115 @@ export default async function BusinessLandingPage({
           {/* CTA */}
           <div className="text-center mt-12">
             <Link href={`/${slug}/book`}>
-              <button className={cn(
-                "inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors",
-                theme.colors.primary,
-                theme.colors.primaryForeground,
-                theme.colors.buttonHover
-              )}>
-                Book Now
-                <ChevronRight className="h-5 w-5" />
-              </button>
+              <Button size="lg" className={cn("rounded-full px-8", theme.colors.primary, theme.colors.buttonHover)}>
+                Book Your Appointment
+                <ChevronRight className="ml-2 h-5 w-5" />
+              </Button>
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Contact & Hours Section */}
-      <section className="py-16">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="grid gap-8 md:grid-cols-2">
-            {/* Contact Info */}
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-xl font-semibold mb-6">Contact Us</h3>
-                <div className="space-y-4">
-                  {organization.phone && (
-                    <a
-                      href={`tel:${organization.phone}`}
-                      className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-                    >
-                      <div className={cn(
-                        "h-10 w-10 rounded-full flex items-center justify-center",
-                        theme.colors.accent
-                      )}>
-                        <Phone className={cn("h-5 w-5", theme.colors.badgeText)} />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Phone</p>
-                        <p className="font-medium">{organization.phone}</p>
-                      </div>
-                    </a>
-                  )}
+      {/* Gallery Section */}
+      <section id="gallery" className="py-20 bg-gray-50 scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <span className={cn("text-sm font-semibold tracking-wide uppercase", theme.colors.badgeText)}>
+              Gallery
+            </span>
+            <h2 className="mt-2 text-3xl sm:text-4xl font-bold text-gray-900">
+              Our Happy Customers
+            </h2>
+            <p className="mt-4 text-lg text-gray-600">
+              See the transformation! Fresh cuts, happy pets.
+            </p>
+          </div>
 
-                  {organization.email && (
-                    <a
-                      href={`mailto:${organization.email}`}
-                      className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-                    >
-                      <div className={cn(
-                        "h-10 w-10 rounded-full flex items-center justify-center",
-                        theme.colors.accent
-                      )}>
-                        <Mail className={cn("h-5 w-5", theme.colors.badgeText)} />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Email</p>
-                        <p className="font-medium">{organization.email}</p>
-                      </div>
-                    </a>
-                  )}
-
-                  {fullAddress && (
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-                    >
-                      <div className={cn(
-                        "h-10 w-10 rounded-full flex items-center justify-center",
-                        theme.colors.accent
-                      )}>
-                        <MapPin className={cn("h-5 w-5", theme.colors.badgeText)} />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Location</p>
-                        <p className="font-medium">{fullAddress}</p>
-                      </div>
-                    </a>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Business Hours */}
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-xl font-semibold mb-6">Business Hours</h3>
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "h-10 w-10 rounded-full flex items-center justify-center",
-                    theme.colors.accent
-                  )}>
-                    <Clock className={cn("h-5 w-5", theme.colors.badgeText)} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Open Daily</p>
-                    <p className="font-medium">
-                      {formatBusinessHours(
-                        organization.businessHoursStart,
-                        organization.businessHoursEnd
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Review Links */}
-                {(organization.googleReviewUrl || organization.yelpUrl) && (
-                  <div className="mt-8">
-                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                      <Star className="h-4 w-4" />
-                      Love our service? Leave a review!
-                    </h4>
-                    <div className="flex gap-3">
-                      {organization.googleReviewUrl && (
-                        <a
-                          href={organization.googleReviewUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={cn(
-                            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                            theme.colors.accent,
-                            "hover:opacity-80"
-                          )}
-                        >
-                          <GoogleIcon className="h-4 w-4" />
-                          Google
-                        </a>
-                      )}
-                      {organization.yelpUrl && (
-                        <a
-                          href={organization.yelpUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={cn(
-                            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                            theme.colors.accent,
-                            "hover:opacity-80"
-                          )}
-                        >
-                          <YelpIcon className="h-4 w-4" />
-                          Yelp
-                        </a>
-                      )}
-                    </div>
-                  </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {petImages.map((src, index) => (
+              <div
+                key={index}
+                className={cn(
+                  "relative rounded-2xl overflow-hidden group cursor-pointer",
+                  index === 0 && "md:col-span-2 md:row-span-2 aspect-square md:aspect-auto",
+                  index !== 0 && "aspect-square"
                 )}
-
-                <div className={cn("mt-6 p-4 rounded-lg", theme.colors.accent)}>
-                  <p className="text-sm text-center text-muted-foreground">
-                    Book online anytime! We&apos;ll confirm your appointment within 24 hours.
-                  </p>
+              >
+                <Image
+                  src={src}
+                  alt={`Happy pet ${index + 1}`}
+                  fill
+                  className="object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+                <div className="absolute bottom-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <span className="inline-flex items-center gap-1.5 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 text-sm font-medium text-gray-900">
+                    <Heart className="h-4 w-4 text-red-500 fill-red-500" />
+                    Fresh & Fabulous
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Footer CTA */}
-      <section className={cn("py-16", theme.colors.footer)}>
-        <div className="max-w-5xl mx-auto px-4 text-center">
-          <h2 className={cn("text-3xl font-bold mb-4", theme.colors.primaryForeground)}>
-            Ready to Book?
-          </h2>
-          <p className={cn("mb-8 max-w-xl mx-auto opacity-90", theme.colors.footerText)}>
-            Give your furry friend the pampering they deserve. Book your appointment today!
-          </p>
-          <Link href={`/${slug}/book`}>
-            <button className="inline-flex items-center justify-center gap-2 text-lg px-8 py-3 rounded-lg font-medium bg-white text-gray-900 hover:bg-gray-100 transition-colors">
-              <Scissors className="h-5 w-5" />
-              Book Appointment
-            </button>
-          </Link>
-        </div>
-      </section>
+      {/* Testimonials Section */}
+      <section id="reviews" className="py-20 scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <span className={cn("text-sm font-semibold tracking-wide uppercase", theme.colors.badgeText)}>
+              Testimonials
+            </span>
+            <h2 className="mt-2 text-3xl sm:text-4xl font-bold text-gray-900">
+              What Pet Parents Say
+            </h2>
+          </div>
 
-      {/* Footer */}
-      <footer className="py-8 border-t">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
-              {organization.name} &copy; {new Date().getFullYear()}
-            </p>
+          <div className="grid md:grid-cols-3 gap-8">
+            {testimonials.map((testimonial, index) => (
+              <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+                <CardContent className="p-8">
+                  <div className="flex gap-1 mb-4">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                  <Quote className="h-8 w-8 text-gray-200 mb-4" />
+                  <p className="text-gray-700 mb-6 leading-relaxed">{testimonial.text}</p>
+                  <div className="flex items-center gap-4">
+                    <div className="relative h-12 w-12 rounded-full overflow-hidden">
+                      <Image
+                        src={testimonial.avatar}
+                        alt={testimonial.name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{testimonial.name}</p>
+                      <p className="text-sm text-gray-500">{testimonial.pet}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-            {/* Quick Links */}
-            <div className="flex items-center gap-4 text-sm">
-              <Link
-                href={`/${slug}/book`}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Book Appointment
-              </Link>
-              <Link
-                href={`/${slug}/portal`}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Client Login
-              </Link>
-            </div>
-
-            {/* Social Media Icons */}
-            {(organization.facebookUrl || organization.instagramUrl || organization.googleReviewUrl || organization.yelpUrl) && (
-              <div className="flex items-center gap-3">
-                {organization.facebookUrl && (
-                  <a
-                    href={organization.facebookUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Facebook"
-                  >
-                    <Facebook className="h-5 w-5" />
-                  </a>
-                )}
-                {organization.instagramUrl && (
-                  <a
-                    href={organization.instagramUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Instagram"
-                  >
-                    <Instagram className="h-5 w-5" />
-                  </a>
-                )}
+          {/* Review Links */}
+          {(organization.googleReviewUrl || organization.yelpUrl) && (
+            <div className="text-center mt-12">
+              <p className="text-gray-600 mb-4">Love our service? Leave us a review!</p>
+              <div className="flex justify-center gap-4">
                 {organization.googleReviewUrl && (
                   <a
                     href={organization.googleReviewUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Google Reviews"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 hover:shadow-md transition-all"
                   >
                     <GoogleIcon className="h-5 w-5" />
+                    Review on Google
                   </a>
                 )}
                 {organization.yelpUrl && (
@@ -485,18 +544,205 @@ export default async function BusinessLandingPage({
                     href={organization.yelpUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Yelp"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 hover:shadow-md transition-all"
                   >
-                    <YelpIcon className="h-5 w-5" />
+                    <YelpIcon className="h-5 w-5 text-red-600" />
+                    Review on Yelp
                   </a>
                 )}
               </div>
-            )}
+            </div>
+          )}
+        </div>
+      </section>
 
-            <p className="text-sm text-muted-foreground">
-              Powered by{" "}
-              <a href="/" className={cn("hover:underline", theme.colors.badgeText)}>
+      {/* Contact Section */}
+      <section id="contact" className="py-20 bg-gray-50 scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20">
+            <div>
+              <span className={cn("text-sm font-semibold tracking-wide uppercase", theme.colors.badgeText)}>
+                Get in Touch
+              </span>
+              <h2 className="mt-2 text-3xl sm:text-4xl font-bold text-gray-900 mb-6">
+                Ready to Book?
+              </h2>
+              <p className="text-lg text-gray-600 mb-8">
+                We&apos;d love to pamper your furry friend! Book online or reach out to us directly.
+              </p>
+
+              <div className="space-y-6">
+                {organization.phone && (
+                  <a
+                    href={`tel:${organization.phone}`}
+                    className="flex items-center gap-4 group"
+                  >
+                    <div className={cn(
+                      "h-14 w-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110",
+                      theme.colors.accent
+                    )}>
+                      <Phone className={cn("h-6 w-6", theme.colors.badgeText)} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Call us</p>
+                      <p className="text-lg font-semibold text-gray-900">{organization.phone}</p>
+                    </div>
+                  </a>
+                )}
+
+                {organization.email && (
+                  <a
+                    href={`mailto:${organization.email}`}
+                    className="flex items-center gap-4 group"
+                  >
+                    <div className={cn(
+                      "h-14 w-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110",
+                      theme.colors.accent
+                    )}>
+                      <Mail className={cn("h-6 w-6", theme.colors.badgeText)} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Email us</p>
+                      <p className="text-lg font-semibold text-gray-900">{organization.email}</p>
+                    </div>
+                  </a>
+                )}
+
+                {fullAddress && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-4 group"
+                  >
+                    <div className={cn(
+                      "h-14 w-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110",
+                      theme.colors.accent
+                    )}>
+                      <MapPin className={cn("h-6 w-6", theme.colors.badgeText)} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Visit us</p>
+                      <p className="text-lg font-semibold text-gray-900">{fullAddress}</p>
+                    </div>
+                  </a>
+                )}
+
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "h-14 w-14 rounded-2xl flex items-center justify-center",
+                    theme.colors.accent
+                  )}>
+                    <Clock className={cn("h-6 w-6", theme.colors.badgeText)} />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Business Hours</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {formatBusinessHours(organization.businessHoursStart, organization.businessHoursEnd)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Social Links */}
+              {(organization.facebookUrl || organization.instagramUrl) && (
+                <div className="mt-8 flex items-center gap-4">
+                  <span className="text-sm text-gray-500">Follow us:</span>
+                  {organization.facebookUrl && (
+                    <a
+                      href={organization.facebookUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="h-10 w-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:border-blue-600 transition-colors"
+                    >
+                      <Facebook className="h-5 w-5" />
+                    </a>
+                  )}
+                  {organization.instagramUrl && (
+                    <a
+                      href={organization.instagramUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="h-10 w-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:text-pink-600 hover:border-pink-600 transition-colors"
+                    >
+                      <Instagram className="h-5 w-5" />
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Booking Card */}
+            <div className="lg:pl-12">
+              <Card className="border-0 shadow-2xl overflow-hidden">
+                <div className={cn("h-2", theme.colors.primary)} />
+                <CardContent className="p-8 lg:p-10">
+                  <div className="text-center mb-8">
+                    <div className={cn(
+                      "inline-flex h-16 w-16 rounded-2xl items-center justify-center mb-4",
+                      theme.colors.accent
+                    )}>
+                      <Calendar className={cn("h-8 w-8", theme.colors.badgeText)} />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Book Your Appointment</h3>
+                    <p className="text-gray-600">Schedule online in just a few clicks</p>
+                  </div>
+
+                  <Link href={`/${slug}/book`} className="block">
+                    <Button className={cn("w-full h-14 text-lg rounded-xl", theme.colors.primary, theme.colors.buttonHover)}>
+                      <Scissors className="mr-2 h-5 w-5" />
+                      Book Now
+                    </Button>
+                  </Link>
+
+                  <p className="text-center text-sm text-gray-500 mt-6">
+                    Free cancellation up to 24 hours before your appointment
+                  </p>
+
+                  <div className="mt-8 pt-8 border-t border-gray-100">
+                    <p className="text-sm text-gray-500 text-center mb-4">Already have an account?</p>
+                    <Link href={`/${slug}/portal`} className="block">
+                      <Button variant="outline" className="w-full h-12 rounded-xl">
+                        <User className="mr-2 h-5 w-5" />
+                        Sign In to Portal
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className={cn("py-12", theme.colors.primary)}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-xl bg-white/20 flex items-center justify-center">
+                <PawPrint className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-lg font-semibold text-white">{organization.name}</span>
+            </div>
+
+            <div className="flex items-center gap-6 text-sm text-white/80">
+              <Link href={`/${slug}/book`} className="hover:text-white transition-colors">
+                Book Appointment
+              </Link>
+              <Link href={`/${slug}/portal`} className="hover:text-white transition-colors">
+                Client Portal
+              </Link>
+              {organization.phone && (
+                <a href={`tel:${organization.phone}`} className="hover:text-white transition-colors">
+                  {organization.phone}
+                </a>
+              )}
+            </div>
+
+            <p className="text-sm text-white/60">
+              &copy; {new Date().getFullYear()} {organization.name}. Powered by{" "}
+              <a href="/" className="text-white/80 hover:text-white transition-colors">
                 GroomDayCRM
               </a>
             </p>
