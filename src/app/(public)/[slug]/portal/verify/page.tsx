@@ -1,11 +1,11 @@
-import { redirect, notFound } from "next/navigation"
+import { notFound } from "next/navigation"
 import { db } from "@/lib/db"
-import { verifyMagicLink } from "@/lib/actions/portal-auth"
 import { getTheme } from "@/lib/themes"
-import { PawPrint, XCircle } from "lucide-react"
+import { PawPrint, XCircle, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { VerifyClient } from "./verify-client"
 
 async function getOrganization(slug: string) {
   return db.organization.findUnique({
@@ -54,34 +54,34 @@ export default async function PortalVerifyPage({
     )
   }
 
-  // Verify the token
-  let result
-  try {
-    result = await verifyMagicLink(token)
-  } catch (error) {
-    console.error("Error verifying magic link:", error)
-    return (
-      <ErrorPage
-        organization={organization}
-        theme={theme}
-        message="An error occurred while verifying your link. Please try again."
-        slug={slug}
-      />
-    )
-  }
-
-  if (result.success) {
-    // Redirect to dashboard
-    redirect(`/${slug}/portal/dashboard`)
-  }
-
+  // Use client component to handle verification via server action
   return (
-    <ErrorPage
-      organization={organization}
-      theme={theme}
-      message={result.error || "Invalid or expired link"}
-      slug={slug}
-    />
+    <div className="min-h-screen bg-gradient-to-b from-muted/50 to-background flex flex-col">
+      {/* Header */}
+      <header className={cn("py-4", theme.colors.primary)}>
+        <div className="max-w-md mx-auto px-4">
+          <div className="flex items-center gap-2 text-white">
+            <PawPrint className="h-6 w-6" />
+            <span className="font-semibold">{organization.name}</span>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <VerifyClient token={token} slug={slug} theme={theme} />
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="py-4 text-center text-sm text-muted-foreground">
+        Powered by{" "}
+        <a href="/" className="hover:underline">
+          GroomDayCRM
+        </a>
+      </footer>
+    </div>
   )
 }
 
