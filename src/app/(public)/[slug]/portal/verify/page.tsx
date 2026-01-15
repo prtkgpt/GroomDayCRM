@@ -29,7 +29,13 @@ export default async function PortalVerifyPage({
   const { slug } = await params
   const { token } = await searchParams
 
-  const organization = await getOrganization(slug)
+  let organization
+  try {
+    organization = await getOrganization(slug)
+  } catch (error) {
+    console.error("Error fetching organization:", error)
+    notFound()
+  }
 
   if (!organization) {
     notFound()
@@ -49,7 +55,20 @@ export default async function PortalVerifyPage({
   }
 
   // Verify the token
-  const result = await verifyMagicLink(token)
+  let result
+  try {
+    result = await verifyMagicLink(token)
+  } catch (error) {
+    console.error("Error verifying magic link:", error)
+    return (
+      <ErrorPage
+        organization={organization}
+        theme={theme}
+        message="An error occurred while verifying your link. Please try again."
+        slug={slug}
+      />
+    )
+  }
 
   if (result.success) {
     // Redirect to dashboard

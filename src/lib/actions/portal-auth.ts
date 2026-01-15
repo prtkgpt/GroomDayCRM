@@ -101,59 +101,64 @@ export async function requestMagicLink(email: string, slug: string) {
 
 // Verify magic link token and create session
 export async function verifyMagicLink(token: string) {
-  // Find the session by token
-  const session = await db.customerSession.findUnique({
-    where: { token },
-    include: {
-      client: {
-        include: {
-          organization: {
-            select: { slug: true },
+  try {
+    // Find the session by token
+    const session = await db.customerSession.findUnique({
+      where: { token },
+      include: {
+        client: {
+          include: {
+            organization: {
+              select: { slug: true },
+            },
           },
         },
       },
-    },
-  })
+    })
 
-  if (!session) {
-    return { success: false, error: "Invalid or expired link" }
-  }
+    if (!session) {
+      return { success: false, error: "Invalid or expired link" }
+    }
 
-  // Check if token is expired
-  if (session.tokenExpiresAt < new Date()) {
-    // Clean up expired session
-    await db.customerSession.delete({ where: { id: session.id } })
-    return { success: false, error: "Link has expired. Please request a new one." }
-  }
+    // Check if token is expired
+    if (!session.tokenExpiresAt || session.tokenExpiresAt < new Date()) {
+      // Clean up expired session
+      await db.customerSession.delete({ where: { id: session.id } })
+      return { success: false, error: "Link has expired. Please request a new one." }
+    }
 
-  // Generate session token
-  const sessionToken = generateToken()
-  const sessionExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+    // Generate session token
+    const sessionToken = generateToken()
+    const sessionExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
 
-  // Update session with session token
-  await db.customerSession.update({
-    where: { id: session.id },
-    data: {
-      sessionToken,
-      sessionExpiresAt,
-      token: generateToken(), // Invalidate the magic link token
-      tokenExpiresAt: new Date(0),
-    },
-  })
+    // Update session with session token
+    await db.customerSession.update({
+      where: { id: session.id },
+      data: {
+        sessionToken,
+        sessionExpiresAt,
+        token: generateToken(), // Invalidate the magic link token
+        tokenExpiresAt: new Date(0),
+      },
+    })
 
-  // Set session cookie
-  const cookieStore = await cookies()
-  cookieStore.set(PORTAL_SESSION_COOKIE, sessionToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    expires: sessionExpiresAt,
-    path: "/",
-  })
+    // Set session cookie
+    const cookieStore = await cookies()
+    cookieStore.set(PORTAL_SESSION_COOKIE, sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      expires: sessionExpiresAt,
+      path: "/",
+    })
 
-  return {
-    success: true,
-    slug: session.client.organization.slug,
+    return {
+      success: true,
+      slug: session.client.organization.slug,
+    }
+  } catch (error) {
+    console.error("Error verifying magic link:", error)
+    return { success: false, error: "An error occurred. Please try again." }
   }
 }
 
