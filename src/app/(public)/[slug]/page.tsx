@@ -11,6 +11,7 @@ import {
   Star,
   Facebook,
   Instagram,
+  User,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { db } from "@/lib/db"
@@ -108,6 +109,38 @@ export default async function BusinessLandingPage({
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Header Navigation */}
+      <header className={cn("sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60")}>
+        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+          <Link href={`/${slug}`} className="flex items-center gap-2 font-semibold">
+            <PawPrint className={cn("h-5 w-5", theme.colors.badgeText)} />
+            {organization.name}
+          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/${slug}/book`}
+              className={cn(
+                "hidden sm:inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg transition-colors",
+                theme.colors.primary,
+                theme.colors.primaryForeground,
+                theme.colors.buttonHover
+              )}
+            >
+              <Scissors className="h-4 w-4" />
+              Book Now
+            </Link>
+            <Link
+              href={`/${slug}/portal`}
+              className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border hover:bg-muted transition-colors"
+            >
+              <User className="h-4 w-4" />
+              <span className="hidden sm:inline">Client Login</span>
+              <span className="sm:hidden">Login</span>
+            </Link>
+          </div>
+        </div>
+      </header>
+
       {/* Hero Section */}
       <section className={cn("relative overflow-hidden bg-gradient-to-b", theme.colors.gradient)}>
         <div className={cn("absolute inset-0 bg-gradient-to-br", theme.colors.heroGradient)} />
@@ -394,6 +427,22 @@ export default async function BusinessLandingPage({
             <p className="text-sm text-muted-foreground">
               {organization.name} &copy; {new Date().getFullYear()}
             </p>
+
+            {/* Quick Links */}
+            <div className="flex items-center gap-4 text-sm">
+              <Link
+                href={`/${slug}/book`}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Book Appointment
+              </Link>
+              <Link
+                href={`/${slug}/portal`}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Client Login
+              </Link>
+            </div>
 
             {/* Social Media Icons */}
             {(organization.facebookUrl || organization.instagramUrl || organization.googleReviewUrl || organization.yelpUrl) && (
