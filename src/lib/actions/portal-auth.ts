@@ -200,6 +200,119 @@ export async function getPortalSession() {
   }
 }
 
+// Request signup - create client and send magic link
+export async function requestSignup(
+  data: {
+    email: string
+    firstName: string
+    lastName: string
+    phone?: string
+  },
+  slug: string
+) {
+  const email = data.email.trim().toLowerCase()
+
+  // Get organization and Resend client
+  const { resend, organization } = await getResendClientBySlug(slug)
+
+  if (!organization) {
+    return { success: false, error: "Business not found" }
+  }
+
+  // Check if org has custom Resend key
+  const orgData = await db.organization.findUnique({
+    where: { slug },
+    select: { id: true, resendApiKey: true },
+  })
+  const hasCustomKey = !!orgData?.resendApiKey
+
+  // Check if client already exists
+  const existingClient = await db.client.findFirst({
+    where: {
+      email,
+      organizationId: organization.id,
+    },
+  })
+
+  if (existingClient) {
+    // Client already exists - just send login link instead
+    return requestMagicLink(email, slug)
+  }
+
+  // Create new client
+  const client = await db.client.create({
+    data: {
+      organizationId: organization.id,
+      email,
+      firstName: data.firstName.trim(),
+      lastName: data.lastName.trim(),
+      phone: data.phone?.trim() || null,
+    },
+  })
+
+  // Generate magic link token
+  const token = generateToken()
+  const tokenExpiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
+
+  // Create session with magic link token
+  await db.customerSession.create({
+    data: {
+      token,
+      tokenExpiresAt,
+      clientId: client.id,
+    },
+  })
+
+  // Build the magic link URL
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.groomdaycrm.com"
+  const magicLink = `${baseUrl}/${slug}/portal/verify?token=${token}`
+
+  // Send welcome email with magic link
+  if (!resend) {
+    console.log("Resend not configured, magic link:", magicLink)
+    return { success: true }
+  }
+
+  try {
+    const from = getFromEmail(organization.name, hasCustomKey)
+    await resend.emails.send({
+      from,
+      to: email,
+      subject: `Welcome to ${organization.name}!`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Welcome, ${client.firstName}!</h2>
+          <p>Your account has been created at ${organization.name}. Click the button below to access your pet portal:</p>
+          <p style="margin: 30px 0;">
+            <a href="${magicLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Access Pet Portal
+            </a>
+          </p>
+          <p>From your portal, you can:</p>
+          <ul>
+            <li>Book grooming appointments</li>
+            <li>View your appointment history</li>
+            <li>Manage your pet profiles</li>
+          </ul>
+          <p style="color: #666; font-size: 14px;">
+            This link expires in 15 minutes. If you didn't create this account, you can safely ignore this email.
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+          <p style="color: #999; font-size: 12px;">
+            ${organization.name} uses GroomDayCRM for appointment management.
+          </p>
+        </div>
+      `,
+    })
+  } catch (error) {
+    console.error("Failed to send welcome email:", error)
+    // Don't delete the client, they can request another magic link
+    return { success: false, error: "Failed to send email. Please try again." }
+  }
+
+  return { success: true }
+}
+
 // Logout from portal
 export async function portalLogout() {
   const cookieStore = await cookies()
