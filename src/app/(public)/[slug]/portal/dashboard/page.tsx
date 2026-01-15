@@ -80,19 +80,40 @@ export default async function PortalDashboardPage({
 }) {
   const { slug } = await params
 
-  const organization = await getOrganization(slug)
+  let organization
+  try {
+    organization = await getOrganization(slug)
+  } catch (error) {
+    console.error("Error fetching organization:", error)
+    notFound()
+  }
+
   if (!organization) {
     notFound()
   }
 
-  const session = await getPortalSession()
+  let session
+  try {
+    session = await getPortalSession()
+  } catch (error) {
+    console.error("Error getting portal session:", error)
+    redirect(`/${slug}/portal`)
+  }
+
   if (!session || session.organization.slug !== slug) {
     redirect(`/${slug}/portal`)
   }
 
   const theme = getTheme(organization.theme)
   const { client } = session
-  const { upcoming, past } = await getClientAppointments(client.id)
+
+  let appointments = { upcoming: [], past: [] } as Awaited<ReturnType<typeof getClientAppointments>>
+  try {
+    appointments = await getClientAppointments(client.id)
+  } catch (error) {
+    console.error("Error fetching appointments:", error)
+  }
+  const { upcoming, past } = appointments
 
   return (
     <div className="min-h-screen bg-muted/30">
