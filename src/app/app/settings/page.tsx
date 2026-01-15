@@ -11,7 +11,7 @@ import { IntegrationsSettings } from "./integrations-settings"
 import { DocumentsSettings } from "./documents-settings"
 
 export default async function SettingsPage() {
-  const [organization, templates, integrations, waiverTemplates, groomingNoteTemplates] = await Promise.all([
+  const [organization, templates, integrations, waiverTemplates, groomingNoteTemplatesRaw] = await Promise.all([
     getOrganization(),
     getMessageTemplates(),
     getIntegrations(),
@@ -22,6 +22,22 @@ export default async function SettingsPage() {
   if (!organization) {
     return <div>Organization not found</div>
   }
+
+  // Transform grooming note templates to ensure fields is always an array
+  // Cast to the expected type since Prisma returns JsonValue
+  const groomingNoteTemplates = groomingNoteTemplatesRaw.map((template) => ({
+    id: template.id,
+    name: template.name,
+    description: template.description,
+    isDefault: template.isDefault,
+    isActive: template.isActive,
+    fields: (Array.isArray(template.fields) ? template.fields : []) as Array<{
+      name: string
+      type: "text" | "textarea" | "select" | "checkbox" | "number" | "rating"
+      options?: string[]
+      required?: boolean
+    }>,
+  }))
 
   const orgWithDefaults = {
     ...organization,

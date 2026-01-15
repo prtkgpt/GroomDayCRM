@@ -374,7 +374,7 @@ export async function sendInvoiceEmail(invoiceId: string) {
 `
 
   const result = await sendEmail({
-    to: client.email,
+    to: client.email!, // Already validated above
     subject: `Invoice ${invoice.invoiceNumber} from ${organization.name}`,
     html,
   })
@@ -392,7 +392,7 @@ export async function sendInvoiceEmail(invoiceId: string) {
     await db.messageLog.create({
       data: {
         type: "EMAIL",
-        recipient: client.email,
+        recipient: client.email!, // Already validated above
         subject: `Invoice ${invoice.invoiceNumber} from ${organization.name}`,
         body: "Invoice",
         status: "SENT",

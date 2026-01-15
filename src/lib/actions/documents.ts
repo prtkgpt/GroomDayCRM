@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
 import { getUser } from "@/lib/auth"
 
@@ -337,7 +338,7 @@ export async function createGroomingNote(data: {
       appointmentId: data.appointmentId,
       petId: data.petId,
       templateId: data.templateId,
-      data: data.data,
+      data: data.data as Prisma.InputJsonValue,
       additionalNotes: data.additionalNotes,
       createdById: user.id,
     },
@@ -359,7 +360,10 @@ export async function updateGroomingNote(
 
   const note = await db.groomingNote.update({
     where: { id },
-    data,
+    data: {
+      ...data,
+      data: data.data ? (data.data as Prisma.InputJsonValue) : undefined,
+    },
   })
 
   revalidatePath(`/app/calendar`)
